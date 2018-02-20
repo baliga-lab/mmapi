@@ -79,6 +79,25 @@ def simple_search(term):
         cursor.close()
         conn.close()
 
+@app.route('/api/v1.0.0/completions/<term>')
+def completions(term):
+    """this is a function to serve the jquery autocomplete box"""
+    conn = dbconn()
+    cursor = conn.cursor()
+    try:
+        cursor.execute('select name from tfs where tfs.name like %s', ["%s%%" % term])
+        terms = [{"id": row[0], "label": row[0], "value": row[0]}
+                 for row in cursor.fetchall()]
+        cursor.execute('select name from mutations where mutations.name like %s',
+                       ["%s%%" % term])
+        mutations = [{"id": row[0], "label": row[0], "value": row[0]}
+                     for row in cursor.fetchall()]
+        completions = terms + mutations
+        return jsonify(completions=completions)
+    finally:
+        cursor.close()
+        conn.close()
+
 
 @app.route('/api/v1.0.0/biclusters')
 def biclusters():
