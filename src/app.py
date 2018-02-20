@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python
 
 import logging
@@ -27,15 +28,53 @@ def dbconn():
                                    password=app.config['DATABASE_PASSWORD'],
                                    database=app.config['DATABASE_NAME'])
 
-@app.route('/api/v1.0.0/bicluster_genes/<cluster_id>')
-def bicluster_genes(cluster_id):
+@app.route('/api/v1.0.0/bicluster/<cluster_id>')
+def bicluster_info(cluster_id):
     """all genes in the specified bicluster"""
     conn = dbconn()
     cursor = conn.cursor()
     try:
+        # mutation role -> transcription factors
+        cursor.execute('select m.name,tfs.name,role from biclusters bc join bc_mutation_tf bmt on bc.id=bmt.bicluster_id join mutations m on m.id=bmt.mutation_id join tfs on tfs.id=bmt.tf_id where bc.name=%s', [cluster_id])
+        mutations_tfs = [{"mutation": mutation, "tf": tf, "role": MUTATION_TF_ROLES[role]}
+                         for mutation, tf, role in cursor.fetchall()]
+
+        # transcription factor -> bicluster
+        cursor.execute('select tfs.name,role from biclusters bc join bc_tf bt on bc.id=bt.bicluster_id join tfs on tfs.id=bt.tf_id where bc.name=%s', [cluster_id])
+        tfs_bc = [{"tf": tf, "role": TF_BC_ROLES[role]}
+                  for tf, role in cursor.fetchall()]
+
+        # bicluster genes
         cursor.execute('select g.name from biclusters bc join bicluster_genes bcg on bc.id=bcg.bicluster_id join genes g on g.id=bcg.gene_id where bc.name=%s', [cluster_id])
         genes = [row[0] for row in cursor.fetchall()]
-        return jsonify(cluster=cluster_id, genes=genes)
+        return jsonify(cluster=cluster_id, mutations_tfs=mutations_tfs,
+                       tfs_bc=tfs_bc, genes=genes)
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@app.route('/api/v1.0.0/search/<term>')
+def simple_search(term):
+    """retrieves the type of the term or empty result if not found"""
+    conn = dbconn()
+    cursor = conn.cursor()
+    try:
+        cursor.execute('select count(*) from tfs where tfs.name=%s', [term])
+        num_results = cursor.fetchone()[0]
+        if num_results > 0:
+            return jsonify(found="yes", data_type="regulator")
+        cursor.execute('select count(*) from mutations where mutations.name=%s', [term])
+        num_results = cursor.fetchone()[0]
+        if num_results > 0:
+            return jsonify(found="yes", data_type="mutation")
+        cursor.execute('select count(*) from biclusters bc where bc.name=%s', [term])
+        num_results = cursor.fetchone()[0]
+        if num_results > 0:
+            return jsonify(found="yes", data_type="bicluster")
+
+        # transcription factor -> bicluster
+        return jsonify(found="no", data_type="NA")
     finally:
         cursor.close()
         conn.close()
