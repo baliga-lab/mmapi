@@ -1,6 +1,6 @@
 create table mutations (id integer primary key auto_increment, name varchar(50) not null);
 create table biclusters (id integer primary key auto_increment, mutation_id integer not null references mutations, name varchar(50) not null);
-create table genes (id integer primary key auto_increment, name varchar(80) not null);
+create table genes (id integer primary key auto_increment, ensembl_id varchar(80) not null, entrez_id varchar(80), preferred varchar(80));
 create table tfs (id integer primary key auto_increment, name varchar(50) not null);
 create table bc_mutation_tf_roles (id integer primary key auto_increment, name varchar(50) not null);
 create table bc_tf_bc_roles (id integer primary key auto_increment, name varchar(50) not null);

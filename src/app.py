@@ -45,7 +45,7 @@ def bicluster_info(cluster_id):
                   for tf, role in cursor.fetchall()]
 
         # bicluster genes
-        cursor.execute('select g.name from biclusters bc join bicluster_genes bcg on bc.id=bcg.bicluster_id join genes g on g.id=bcg.gene_id where bc.name=%s', [cluster_id])
+        cursor.execute('select g.preferred from biclusters bc join bicluster_genes bcg on bc.id=bcg.bicluster_id join genes g on g.id=bcg.gene_id where bc.name=%s', [cluster_id])
         genes = [row[0] for row in cursor.fetchall()]
         return jsonify(cluster=cluster_id, mutations_tfs=mutations_tfs,
                        tfs_bc=tfs_bc, genes=genes)
