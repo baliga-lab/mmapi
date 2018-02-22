@@ -72,6 +72,11 @@ def simple_search(term):
         num_results = cursor.fetchone()[0]
         if num_results > 0:
             return jsonify(found="yes", data_type="bicluster")
+        cursor.execute('select count(*) from genes where ensembl_id=%s or preferred=%s',
+                       [term, term])
+        num_results = cursor.fetchone()[0]
+        if num_results > 0:
+            return jsonify(found="yes", data_type="gene")
 
         # transcription factor -> bicluster
         return jsonify(found="no", data_type="NA")
@@ -85,14 +90,23 @@ def completions(term):
     conn = dbconn()
     cursor = conn.cursor()
     try:
-        cursor.execute('select name from tfs where tfs.name like %s', ["%s%%" % term])
+        cursor.execute('select name from tfs where name like %s', ["%s%%" % term])
         terms = [{"id": row[0], "label": row[0], "value": row[0]}
                  for row in cursor.fetchall()]
-        cursor.execute('select name from mutations where mutations.name like %s',
+        cursor.execute('select name from mutations where name like %s',
                        ["%s%%" % term])
         mutations = [{"id": row[0], "label": row[0], "value": row[0]}
                      for row in cursor.fetchall()]
-        completions = terms + mutations
+        cursor.execute('select preferred from genes where preferred like %s',
+                       ["%s%%" % term])
+        gene_preferred = [{"id": row[0], "label": row[0], "value": row[0]}
+                          for row in cursor.fetchall()]
+        cursor.execute('select ensembl_id from genes where ensembl_id like %s',
+                       ["%s%%" % term])
+        gene_ensembl = [{"id": row[0], "label": row[0], "value": row[0]}
+                        for row in cursor.fetchall()]
+
+        completions = terms + mutations + gene_preferred + gene_ensembl
         return jsonify(completions=completions)
     finally:
         cursor.close()
@@ -162,6 +176,41 @@ def summary():
     finally:
         cursor.close()
         conn.close()
+
+
+@app.route('/api/v1.0.0/gene_info/<gene_name>')
+def gene_info(gene_name):
+    """return all biclusters that contain this gene"""
+    conn = dbconn()
+    cursor = conn.cursor()
+    try:
+        cursor.execute('select entrez_id,ensembl_id,preferred from genes where entrez_id=%s or ensembl_id=%s or preferred=%s',
+                       [gene_name, gene_name, gene_name])
+        results = [(entrez_id, ensembl_id, preferred)
+                   for entrez_id, ensembl_id, preferred in cursor.fetchall()]
+        if len(results) > 0:
+            return jsonify(entrez_id=results[0][0], ensembl_id=results[0][1],
+                           preferred=results[0][2])
+        else:
+            return jsonify(entrez_id="NA", ensembl_id="NA", preferred="NA")
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@app.route('/api/v1.0.0/biclusters_for_gene/<gene_name>')
+def biclusters_for_gene(gene_name):
+    """return all biclusters that contain this gene"""
+    conn = dbconn()
+    cursor = conn.cursor()
+    try:
+        cursor.execute('select bc.name from bicluster_genes bg join genes g on bg.gene_id=g.id join biclusters bc on bc.id=bg.bicluster_id where g.entrez_id=%s or g.ensembl_id=%s or g.preferred=%s',
+                       [gene_name, gene_name, gene_name])
+        return jsonify(biclusters=[row[0] for row in cursor.fetchall()])
+    finally:
+        cursor.close()
+        conn.close()
+
 
 if __name__ == '__main__':
     app.debug = True
