@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python
 
 import logging
@@ -14,6 +13,9 @@ from sqlalchemy import and_
 from flask_cors import CORS, cross_origin
 
 from werkzeug import secure_filename
+import requests
+import xml.etree.ElementTree as ET
+import re
 
 app = Flask(__name__)
 CORS(app)
@@ -189,10 +191,40 @@ def gene_info(gene_name):
         results = [(entrez_id, ensembl_id, preferred)
                    for entrez_id, ensembl_id, preferred in cursor.fetchall()]
         if len(results) > 0:
-            return jsonify(entrez_id=results[0][0], ensembl_id=results[0][1],
-                           preferred=results[0][2])
+            ensembl_id = results[0][1]
+            r = requests.get('https://rest.ensembl.org/lookup/id/%s?content-type=application/json;expand=1' % ensembl_id)
+            if r.status_code == 200:
+                ensdata = r.json()
+                print(ensdata['description'])
+            r = requests.get('https://rest.ensembl.org/xrefs/id/' + ensembl_id +
+                             '?content-type=application/json;external_db=uniprot%;all_levels=1')
+            if r.status_code == 200:
+                xrefdata = r.json()
+                uniprot_ids = [entry['primary_id'] for entry in xrefdata]
+                if len(uniprot_ids) > 0:
+                    uniprot_id = uniprot_ids[0]
+                else:
+                    uniprot_id = '-'
+            if uniprot_id != '-':
+                # retrieve the function information from UniProt
+                r = requests.get('https://www.uniprot.org/uniprot/%s.xml' % uniprot_id)
+                doc = ET.fromstring(r.text)
+                function = '-'
+                for child in doc:
+                    localname = re.sub(r'{.*}', '', child.tag)
+                    if localname == 'entry':
+                        for c in child:
+                            localname = re.sub(r'{.*}', '', c.tag)
+                            if localname == 'comment' and c.attrib['type'] == 'function':
+                                function = ""
+                                for node in c:
+                                    function += node.text
+            return jsonify(entrez_id=results[0][0], ensembl_id=ensembl_id,
+                           preferred=results[0][2], description=ensdata['description'],
+                           uniprot_id=uniprot_id, function=function)
         else:
-            return jsonify(entrez_id="NA", ensembl_id="NA", preferred="NA")
+            return jsonify(entrez_id="NA", ensembl_id="NA", preferred="NA", description='NA',
+                           uniprot_id='NA', function='NA')
     finally:
         cursor.close()
         conn.close()
