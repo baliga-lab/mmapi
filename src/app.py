@@ -4,6 +4,7 @@ import logging
 import json
 import os
 import traceback
+from collections import defaultdict
 import mysql.connector
 
 from flask import Flask, Response, url_for, redirect, render_template, request, session, flash, jsonify
@@ -272,6 +273,28 @@ def bicluster_network(cluster_id):
     finally:
         cursor.close()
         conn.close()
+
+
+#
+# TODO APIs for bicluster details
+#
+@app.route('/api/v1.0.0/bicluster_expressions/<cluster_id>')
+def bicluster_expression_data(cluster_id):
+    """returns data plot data in Highcharts format for bicluster expressions"""
+    # series is gene -> list of values
+    series  = defaultdict(list)
+    # mockup some data for now
+    series['Gene1'] = [0.345, 0.214, 0.123]
+    series['Gene2'] = [0.512, 0.124, 0.321]
+    conds = ['Cond1', 'Cond2', 'Cond3']
+    return jsonify(expressions=series, conditions=conds)
+
+
+@app.route('/api/v1.0.0/bicluster_enrichment/<cluster_id>')
+def bicluster_enrichment(cluster_id):
+    """returns barplot enrichment data for tumor subtypes in quitiles
+    for the given bicluster"""
+    pass
 
 
 if __name__ == '__main__':
