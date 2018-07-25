@@ -284,22 +284,17 @@ def bicluster_network(cluster_id):
 @app.route('/api/v1.0.0/bicluster_expressions/<cluster_id>')
 def bicluster_expression_data(cluster_id):
     """returns data plot data in Highcharts format for bicluster expressions"""
+    """this is actually box plot data, so the series needs to be a list of
+    six tuples [condition_id, min, lower quartile, mean, upper quartile, max]]
+    """
+    num_conds = random.randint(20, 30)
+    data = []
+    for i in range(num_conds):
+        mean = random.uniform(-0.3, 0.3)
+        data.append(["Cond%i" % i, mean - 0.5, mean - 0.25, mean, mean + 0.25, mean + 0.5])
     conn = dbconn()
     cursor = conn.cursor()
-    try:
-        cursor.execute('select preferred from genes g join bicluster_genes bg on bg.gene_id=g.id join biclusters b on bg.bicluster_id=b.id where name=%s', [cluster_id])
-        cluster_genes = [row[0] for row in cursor.fetchall()]
-        # series is gene -> list of values
-        series  = defaultdict(list)
-        num_conds = random.randint(20, 30)
-        # mockup some data for now (n conditions)
-        for g in cluster_genes:
-            series[g] = [random.uniform(-0.3, 0.3) for i in range(num_conds)]
-        conds = ['Cond%d' % i for i in range(num_conds)]
-        return jsonify(expressions=series, conditions=conds)
-    finally:
-        cursor.close()
-        conn.close()
+    return jsonify(data=data)
 
 
 
