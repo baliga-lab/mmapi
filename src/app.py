@@ -7,6 +7,9 @@ import traceback
 from collections import defaultdict
 import mysql.connector
 
+# for mockup
+import random
+
 from flask import Flask, Response, url_for, redirect, render_template, request, session, flash, jsonify
 import flask
 from sqlalchemy import and_
@@ -281,20 +284,39 @@ def bicluster_network(cluster_id):
 @app.route('/api/v1.0.0/bicluster_expressions/<cluster_id>')
 def bicluster_expression_data(cluster_id):
     """returns data plot data in Highcharts format for bicluster expressions"""
-    # series is gene -> list of values
-    series  = defaultdict(list)
-    # mockup some data for now
-    series['Gene1'] = [0.345, 0.214, 0.123]
-    series['Gene2'] = [0.512, 0.124, 0.321]
-    conds = ['Cond1', 'Cond2', 'Cond3']
-    return jsonify(expressions=series, conditions=conds)
+    conn = dbconn()
+    cursor = conn.cursor()
+    try:
+        cursor.execute('select preferred from genes g join bicluster_genes bg on bg.gene_id=g.id join biclusters b on bg.bicluster_id=b.id where name=%s', [cluster_id])
+        cluster_genes = [row[0] for row in cursor.fetchall()]
+        # series is gene -> list of values
+        series  = defaultdict(list)
+        num_conds = random.randint(20, 30)
+        # mockup some data for now (n conditions)
+        for g in cluster_genes:
+            series[g] = [random.uniform(-0.3, 0.3) for i in range(num_conds)]
+        conds = ['Cond%d' % i for i in range(num_conds)]
+        return jsonify(expressions=series, conditions=conds)
+    finally:
+        cursor.close()
+        conn.close()
+
 
 
 @app.route('/api/v1.0.0/bicluster_enrichment/<cluster_id>')
 def bicluster_enrichment(cluster_id):
     """returns barplot enrichment data for tumor subtypes in quitiles
     for the given bicluster"""
-    pass
+    conn = dbconn()
+    cursor = conn.cursor()
+    subtypes = ['g_cimp', 'proneural', 'neural', 'classical', 'mesenchymal', 'control']
+    # series is gene -> list of values
+    series  = defaultdict(list)
+    # mockup some data for now (3 conditions)
+    for s in subtypes:
+        series[s] = [random.uniform(-10.0, 10.0) for i in range(5)]
+    conds = ['All', 'All', 'All', 'All', 'All']
+    return jsonify(expressions=series, conditions=conds)
 
 
 if __name__ == '__main__':
