@@ -301,7 +301,7 @@ def bicluster_expression_data(cluster_id):
     cursor = conn.cursor()
     data = []
     try:
-        cursor.execute('select p.name,median,min_value,max_value,lower_quartile,upper_quartile from bicluster_boxplot_data bbd join patients p on bbd.patient_id=p.id join biclusters bc on bbd.bicluster_id=bc.id where bc.name=%s',
+        cursor.execute('select p.name,median,min_value,max_value,lower_quartile,upper_quartile from bicluster_boxplot_data bbd join patients p on bbd.patient_id=p.id join biclusters bc on bbd.bicluster_id=bc.id where bc.name=%s order by median',
                        [cluster_id])
         for patient, median, minval, maxval, lower_quart, upper_quart in cursor.fetchall():
             data.append([patient, minval, lower_quart, median, upper_quart, maxval])
