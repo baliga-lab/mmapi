@@ -40,6 +40,9 @@ def bicluster_info(cluster_id):
     conn = dbconn()
     cursor = conn.cursor()
     try:
+        cursor.execute('select cox_hazard_ratio from biclusters where name=%s', [cluster_id])
+        hazard_ratio = cursor.fetchone()[0]
+
         # mutation role -> transcription factors
         cursor.execute('select m.name,tfs.name,role from biclusters bc join bc_mutation_tf bmt on bc.id=bmt.bicluster_id join mutations m on m.id=bmt.mutation_id join tfs on tfs.id=bmt.tf_id where bc.name=%s', [cluster_id])
         mutations_tfs = [{"mutation": mutation, "tf": tf, "role": MUTATION_TF_ROLES[role]}
@@ -53,7 +56,9 @@ def bicluster_info(cluster_id):
         # bicluster genes
         cursor.execute('select g.preferred from biclusters bc join bicluster_genes bcg on bc.id=bcg.bicluster_id join genes g on g.id=bcg.gene_id where bc.name=%s', [cluster_id])
         genes = [row[0] for row in cursor.fetchall()]
-        return jsonify(cluster=cluster_id, mutations_tfs=mutations_tfs,
+        return jsonify(cluster=cluster_id,
+                       hazard_ratio=hazard_ratio,
+                       mutations_tfs=mutations_tfs,
                        tfs_bc=tfs_bc, genes=genes)
     finally:
         cursor.close()
@@ -125,8 +130,9 @@ def biclusters():
     conn = dbconn()
     cursor = conn.cursor()
     try:
-        cursor.execute('select name from biclusters')
-        biclusters = [row[0] for row in cursor.fetchall()]
+        cursor.execute('select name, cox_hazard_ratio from biclusters')
+        biclusters = [{'cluster_id': row[0], 'hazard_ratio': row[1]}
+                      for row in cursor.fetchall()]
         return jsonify(biclusters=biclusters)
     finally:
         cursor.close()
@@ -176,9 +182,12 @@ def summary():
         num_regulators = cursor.fetchone()[0]
         cursor.execute('select count(*) from mutations')
         num_mutations = cursor.fetchone()[0]
+        cursor.execute('select count(*) from patients')
+        num_patients = cursor.fetchone()[0]
         return jsonify(num_biclusters=num_biclusters,
                        num_regulators=num_regulators,
-                       num_mutations=num_mutations)
+                       num_mutations=num_mutations,
+                       num_patients=num_patients)
     finally:
         cursor.close()
         conn.close()
@@ -240,9 +249,10 @@ def biclusters_for_gene(gene_name):
     conn = dbconn()
     cursor = conn.cursor()
     try:
-        cursor.execute('select bc.name from bicluster_genes bg join genes g on bg.gene_id=g.id join biclusters bc on bc.id=bg.bicluster_id where g.entrez_id=%s or g.ensembl_id=%s or g.preferred=%s',
+        cursor.execute('select bc.name,cox_hazard_ratio from bicluster_genes bg join genes g on bg.gene_id=g.id join biclusters bc on bc.id=bg.bicluster_id where g.entrez_id=%s or g.ensembl_id=%s or g.preferred=%s',
                        [gene_name, gene_name, gene_name])
-        return jsonify(biclusters=[row[0] for row in cursor.fetchall()])
+        return jsonify(biclusters=[{'cluster_id': row[0],
+                                    'hazard_ratio': row[1]} for row in cursor.fetchall()])
     finally:
         cursor.close()
         conn.close()
@@ -287,14 +297,19 @@ def bicluster_expression_data(cluster_id):
     """this is actually box plot data, so the series needs to be a list of
     six tuples [condition_id, min, lower quartile, mean, upper quartile, max]]
     """
-    num_conds = random.randint(20, 30)
-    data = []
-    for i in range(num_conds):
-        mean = random.uniform(-0.3, 0.3)
-        data.append(["Cond%i" % i, mean - 0.5, mean - 0.25, mean, mean + 0.25, mean + 0.5])
     conn = dbconn()
     cursor = conn.cursor()
-    return jsonify(data=data)
+    data = []
+    try:
+        cursor.execute('select p.name,median,min_value,max_value,lower_quartile,upper_quartile from bicluster_boxplot_data bbd join patients p on bbd.patient_id=p.id join biclusters bc on bbd.bicluster_id=bc.id where bc.name=%s',
+                       [cluster_id])
+        for patient, median, minval, maxval, lower_quart, upper_quart in cursor.fetchall():
+            data.append([patient, minval, lower_quart, median, upper_quart, maxval])
+        return jsonify(data=data)
+    finally:
+        cursor.close()
+        conn.close()
+
 
 
 
