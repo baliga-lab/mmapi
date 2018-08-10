@@ -49,9 +49,9 @@ def bicluster_info(cluster_id):
                          for mutation, tf, role in cursor.fetchall()]
 
         # transcription factor -> bicluster
-        cursor.execute('select tfs.name,role from biclusters bc join bc_tf bt on bc.id=bt.bicluster_id join tfs on tfs.id=bt.tf_id where bc.name=%s', [cluster_id])
-        tfs_bc = [{"tf": tf, "role": TF_BC_ROLES[role]}
-                  for tf, role in cursor.fetchall()]
+        cursor.execute('select tfs.name,role,tfs.cox_hazard_ratio from biclusters bc join bc_tf bt on bc.id=bt.bicluster_id join tfs on tfs.id=bt.tf_id where bc.name=%s', [cluster_id])
+        tfs_bc = [{"tf": tf, "role": TF_BC_ROLES[role], "hazard_ratio": tf_hazard_ratio}
+                  for tf, role, tf_hazard_ratio in cursor.fetchall()]
 
         # bicluster genes
         cursor.execute('select g.preferred from biclusters bc join bicluster_genes bcg on bc.id=bcg.bicluster_id join genes g on g.id=bcg.gene_id where bc.name=%s', [cluster_id])
@@ -161,11 +161,13 @@ def regulator(tf_name):
     conn = dbconn()
     cursor = conn.cursor()
     try:
-        cursor.execute('select bc.name,bt.role from bc_tf bt join biclusters bc on bt.bicluster_id=bc.id join tfs on bt.tf_id=tfs.id where tfs.name=%s',
+        cursor.execute('select cox_hazard_ratio from tfs where name=%s', [tf_name])
+        hazard_ratio = cursor.fetchone()[0]
+        cursor.execute('select bc.name,bt.role,bc.cox_hazard_ratio from bc_tf bt join biclusters bc on bt.bicluster_id=bc.id join tfs on bt.tf_id=tfs.id where tfs.name=%s',
                        [tf_name])
-        result = [{"bicluster": bc, "role": TF_BC_ROLES[role]}
-                  for bc, role in cursor.fetchall()]
-        return jsonify(regulator=tf_name, entries=result)
+        result = [{"bicluster": bc, "role": TF_BC_ROLES[role], "hazard_ratio": bc_hazard_ratio}
+                  for bc, role, bc_hazard_ratio in cursor.fetchall()]
+        return jsonify(regulator=tf_name, hazard_ratio=hazard_ratio, entries=result)
     finally:
         cursor.close()
         conn.close()
