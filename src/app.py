@@ -331,6 +331,25 @@ def bicluster_enrichment(cluster_id):
     return jsonify(expressions=series, conditions=conds)
 
 
+@app.route('/api/v1.0.0/patient/<patient_id>')
+def patient_info(patient_id):
+    """patient information"""
+    conn = dbconn()
+    cursor = conn.cursor()
+    try:
+        cursor.execute('select pfs_survival, pfs_status, age, sex from patients where name=%s',
+                       [patient_id])
+        surv, status, age, sex = cursor.fetchone()
+        cursor.execute('select t.name,pt.tf_activity from patient_tf pt join patients p on pt.patient_id=p.id join tfs t on pt.tf_id=t.id where p.name=%s', [patient_id])
+        tf_activity = [{'tf': tf, 'activity': activity} for tf, activity in cursor.fetchall()]
+        return jsonify(patient=patient_id, pfs_survival=surv, pfs_status=status,
+                       age=age, sex=sex,
+                       tf_activity=tf_activity)
+    finally:
+        cursor.close()
+        conn.close()
+
+
 if __name__ == '__main__':
     app.debug = True
     app.secret_key = 'trstrestnorgp654g'
