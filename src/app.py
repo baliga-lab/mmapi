@@ -350,6 +350,30 @@ def patient_info(patient_id):
         conn.close()
 
 
+MUTATION_ROLES = {1: 'down-regulates', 2: 'up-regulates'}
+REGULATOR_ROLES = {1: 'activates', 2: 'represses'}
+
+@app.route('/api/v1.0.0/causal_flow')
+def causal_flow():
+    """causal flow"""
+    conn = dbconn()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""select bc.name,mut.name,tfs.name,bmt.role,bc_tf.role,bc.cox_hazard_ratio,bgg.num_genes from bc_mutation_tf bmt join biclusters bc on bmt.bicluster_id=bc.id join mutations mut on bmt.mutation_id=mut.id join tfs on bmt.tf_id=tfs.id join bc_tf on bc.id=bc_tf.bicluster_id and tfs.id=bc_tf.tf_id join (select bc.id,count(bg.gene_id) as num_genes from biclusters bc join bicluster_genes bg on bc.id=bg.bicluster_id group by bc.id) as bgg on bc.id=bgg.id""")
+        return jsonify(entries=[{
+            'bicluster': bc,
+            'mutation': mut,
+            'regulator': tf,
+            'mutation_role': MUTATION_ROLES[mut_role],
+            'regulator_role': REGULATOR_ROLES[tf_role],
+            'hazard_ratio': hratio,
+            'num_genes': ngenes
+        } for bc,mut,tf,mut_role,tf_role,hratio,ngenes in cursor.fetchall()])
+    finally:
+        cursor.close()
+        conn.close()
+
+
 if __name__ == '__main__':
     app.debug = True
     app.secret_key = 'trstrestnorgp654g'
