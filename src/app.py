@@ -149,10 +149,12 @@ def mutation(mutation_name):
     conn = dbconn()
     cursor = conn.cursor()
     try:
-        cursor.execute('select tfs.name,bc.name,bmt.role from bc_mutation_tf bmt join biclusters bc on bmt.bicluster_id=bc.id join mutations m on m.id=bmt.mutation_id join tfs on tfs.id=bmt.tf_id where m.name=%s',
+        cursor.execute('select tfs.name,bc.name,bmt.role,bc.cox_hazard_ratio from bc_mutation_tf bmt join biclusters bc on bmt.bicluster_id=bc.id join mutations m on m.id=bmt.mutation_id join tfs on tfs.id=bmt.tf_id where m.name=%s',
                        [mutation_name])
-        result = [{"regulator": tf, "bicluster": bc, "role": MUTATION_TF_ROLES[role]}
-                  for tf, bc, role in cursor.fetchall()]
+        result = [{"regulator": tf, "bicluster": bc,
+                   "role": MUTATION_TF_ROLES[role],
+                   "bc_cox_hazard_ratio": bc_cox_hazard_ratio}
+                  for tf, bc, role,bc_cox_hazard_ratio in cursor.fetchall()]
         return jsonify(mutation=mutation_name, entries=result)
     finally:
         cursor.close()
