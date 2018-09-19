@@ -169,10 +169,12 @@ def regulator(tf_name):
     try:
         cursor.execute('select cox_hazard_ratio from tfs where name=%s', [tf_name])
         hazard_ratio = cursor.fetchone()[0]
-        cursor.execute('select bc.name,bt.role,bc.cox_hazard_ratio from bc_tf bt join biclusters bc on bt.bicluster_id=bc.id join tfs on bt.tf_id=tfs.id where tfs.name=%s',
+        cursor.execute('select bc.name,bt.role,bc.cox_hazard_ratio,mut.name from bc_tf bt join biclusters bc on bt.bicluster_id=bc.id join tfs on bt.tf_id=tfs.id join bc_mutation_tf bmt on bmt.bicluster_id=bt.bicluster_id and bmt.tf_id=bt.tf_id join mutations mut on mut.id=bmt.mutation_id where tfs.name=%s',
                        [tf_name])
-        result = [{"bicluster": bc, "role": TF_BC_ROLES[role], "hazard_ratio": bc_hazard_ratio}
-                  for bc, role, bc_hazard_ratio in cursor.fetchall()]
+        result = [{"bicluster": bc, "role": TF_BC_ROLES[role],
+                   "hazard_ratio": bc_hazard_ratio,
+                   "mutation": mut}
+                  for bc, role, bc_hazard_ratio, mut in cursor.fetchall()]
         return jsonify(regulator=tf_name, hazard_ratio=hazard_ratio, entries=result)
     finally:
         cursor.close()
