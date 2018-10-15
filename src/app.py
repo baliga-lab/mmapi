@@ -298,9 +298,6 @@ def bicluster_network(cluster_id):
         conn.close()
 
 
-#
-# TODO APIs for bicluster details
-#
 @app.route('/api/v1.0.0/bicluster_expressions/<cluster_id>')
 def bicluster_expression_data(cluster_id):
     """returns data plot data in Highcharts format for bicluster expressions"""
@@ -319,8 +316,6 @@ def bicluster_expression_data(cluster_id):
     finally:
         cursor.close()
         conn.close()
-
-
 
 
 @app.route('/api/v1.0.0/bicluster_enrichment/<cluster_id>')
@@ -377,6 +372,23 @@ def causal_flow():
             'hazard_ratio': hratio,
             'num_genes': ngenes
         } for bc,mut,tf,mut_role,tf_role,hratio,ngenes in cursor.fetchall()])
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@app.route('/api/v1.0.0/bicluster_patients/<cluster_id>')
+def bicluster_patients(cluster_id):
+    """returns the information for all the patients in the specified bicluster"""
+    conn = dbconn()
+    cursor = conn.cursor()
+    data = []
+    try:
+        cursor.execute('select p.name,p.pfs_survival,p.pfs_status,p.sex,p.age from bicluster_patients bp join patients p on bp.patient_id=p.id join biclusters bc on bp.bicluster_id=bc.id where bc.name=%s', [cluster_id])
+        for patient, survival, survival_status, sex, age in cursor.fetchall():
+            data.append({'name': patient, 'survival': survival,
+                         'survival_status': survival_status, 'sex': sex, 'age': age})
+        return jsonify(data=data)
     finally:
         cursor.close()
         conn.close()
