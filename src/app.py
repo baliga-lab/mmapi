@@ -394,6 +394,88 @@ def bicluster_patients(cluster_id):
         conn.close()
 
 
+@app.route('/api/v1.0.0/bicluster_patient_survival/<cluster_id>')
+def bicluster_patient_survival(cluster_id):
+    """returns the information for all the patients in the specified bicluster"""
+    conn = dbconn()
+    cursor = conn.cursor()
+    try:
+        cursor.execute('select p.pfs_survival from bicluster_patients bp join patients p on bp.patient_id=p.id join biclusters bc on bp.bicluster_id=bc.id where bc.name=%s and p.pfs_survival is not null', [cluster_id])
+        values = [row[0] for row in cursor.fetchall()]
+        return jsonify(data=values)
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@app.route('/api/v1.0.0/bicluster_patient_ages/<cluster_id>')
+def bicluster_patient_ages(cluster_id):
+    """returns the information for all the patients in the specified bicluster"""
+    conn = dbconn()
+    cursor = conn.cursor()
+    try:
+        cursor.execute('select p.age from bicluster_patients bp join patients p on bp.patient_id=p.id join biclusters bc on bp.bicluster_id=bc.id where bc.name=%s and p.age is not null', [cluster_id])
+        values = [int(row[0]) for row in cursor.fetchall()]
+        return jsonify(data=values)
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@app.route('/api/v1.0.0/bicluster_patient_status/<cluster_id>')
+def bicluster_patient_status(cluster_id):
+    """returns the information for all the patients in the specified bicluster"""
+    conn = dbconn()
+    cursor = conn.cursor()
+    try:
+        cursor.execute('select p.age,count(p.age) from bicluster_patients bp join patients p on bp.patient_id=p.id join biclusters bc on bp.bicluster_id=bc.id where bc.name=%s and p.age is not null group by p.age;', [cluster_id])
+        ages = [(age, count) for age, count in cursor.fetchall()]
+        total = sum([t[1] for t in ages])
+        buckets = defaultdict(int)
+        age_values = []
+        keys = ['<= 45', '46-65', '> 65']
+        for age, count in ages:
+            if age <= 45:
+                buckets['<= 45'] += count
+            elif age <= 65:
+                buckets['46-65'] += count
+            else:
+                buckets['> 65'] += count
+        for key, count in buckets.items():
+            age_values.append({'name': key, 'y': float(count) / float(total)})
+
+        cursor.execute('select p.sex,count(p.sex) from bicluster_patients bp join patients p on bp.patient_id=p.id join biclusters bc on bp.bicluster_id=bc.id where bc.name=%s and p.sex is not null group by p.sex;', [cluster_id])
+        sex_map = {sex: count for sex, count in cursor.fetchall()}
+        total = sum(sex_map.values())
+        sexvals = []
+        if total > 0:
+            if 1 in sex_map:
+                sexvals.append({'name': 'male', 'y': float(sex_map[1]) / float(total)})
+            if 2 in sex_map:
+                sexvals.append({'name': 'female', 'y': float(sex_map[2]) / float(total)})
+
+        cursor.execute('select p.pfs_survival,count(p.pfs_survival) from bicluster_patients bp join patients p on bp.patient_id=p.id join biclusters bc on bp.bicluster_id=bc.id where bc.name=%s and p.pfs_survival is not null group by p.pfs_survival;', [cluster_id])
+        surv_buckets = defaultdict(int)
+        surv_values = []
+        survs = [(survival, count) for survival, count in cursor.fetchall()]
+        total = sum([t[1] for t in survs])
+        keys = ['< 500', '500-1000', '> 1000']
+        for surv, count in survs:
+            if surv < 500:
+                surv_buckets['< 500'] += count
+            elif surv <= 1000:
+                surv_buckets['500-1000'] += count
+            else:
+                surv_buckets['> 1000'] += count
+        for key, count in surv_buckets.items():
+            surv_values.append({'name': key, 'y': float(count) / float(total)})
+
+        return jsonify(data={'age': age_values, 'sex': sexvals, 'survival': surv_values})
+
+    finally:
+        cursor.close()
+        conn.close()
+
 if __name__ == '__main__':
     app.debug = True
     app.secret_key = 'trstrestnorgp654g'
