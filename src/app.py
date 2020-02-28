@@ -20,6 +20,7 @@ from werkzeug import secure_filename
 import requests
 import xml.etree.ElementTree as ET
 import re
+import datasets
 
 app = Flask(__name__)
 CORS(app)
@@ -28,6 +29,10 @@ app.config.from_envvar('APP_SETTINGS')
 
 MUTATION_TF_ROLES = { 1: 'down-regulates', 2: 'up-regulates'}
 TF_BC_ROLES = { 1: 'activates', 2: 'represses' }
+
+
+all_datasets = datasets.read_all_datasets(app.config['EXCELRA_DATASETS'])
+
 
 def dbconn():
     return mysql.connector.connect(user=app.config['DATABASE_USER'],
@@ -356,6 +361,7 @@ def patient_info(patient_id):
 MUTATION_ROLES = {1: 'down-regulates', 2: 'up-regulates'}
 REGULATOR_ROLES = {1: 'activates', 2: 'represses'}
 
+# TODO: This should actually be simply a pregenerated JSON file
 @app.route('/api/v1.0.0/causal_flow')
 def causal_flow():
     """causal flow"""
@@ -475,6 +481,134 @@ def bicluster_patient_status(cluster_id):
     finally:
         cursor.close()
         conn.close()
+
+
+"""
+EXCELRA ACCESS FUNCTIONS
+"""
+
+@app.route('/cancers')
+def cancers():
+    return jsonify(status='ok', cancers=all_datasets['cancers'])
+
+
+@app.route('/diseases')
+def diseases():
+    return jsonify(status='ok', diseases=all_datasets['diseases'])
+
+
+@app.route('/mutations')
+def mutations():
+    return jsonify(status='ok', mutations=all_datasets['mutations'])
+
+
+@app.route('/regulators')
+def regulators():
+    return jsonify(status='ok', regulators=all_datasets['regulators'])
+
+
+@app.route('/regulons')
+def regulons():
+    return jsonify(status='ok', regulons=all_datasets['regulons'])
+
+@app.route('/drugs')
+def drugs():
+    return jsonify(status='ok', drugs=all_datasets['drugs'])
+
+@app.route('/pmid_counts/<hr>/<cancer>/<disease>/<mutation>/<regulator>/<regulon>/<drug>')
+def pmid_counts(hr, cancer, disease, mutation, regulator, regulon, drug):
+    return jsonify(status='ok',
+                   num_cancer_mutation_pmids=len(datasets.cancer_mutation(all_datasets, hr, cancer, mutation)),
+                   num_disease_mutation_pmids=len(datasets.disease_mutation(all_datasets, hr, disease, mutation)),
+                   num_disease_regulator_pmids=len(datasets.disease_regulator(all_datasets, hr, disease, regulator)),
+                   num_disease_regulon_pmids=len(datasets.disease_regulon(all_datasets, hr, disease, regulon)),
+                   num_mutation_regulator_pmids=len(datasets.mutation_regulator(all_datasets, hr, mutation, regulator)),
+                   num_mutation_drug_pmids=len(datasets.mutation_drug(all_datasets, hr, mutation, drug)))
+
+
+def fetch_articles(pmids):
+    pmid_str = ','.join(pmids)
+    url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=%s&retmode=xml" % pmid_str
+
+    r = requests.get(url)
+    try:
+        root = ET.fromstring(r.content)
+        result = []
+        for item in root.findall('./PubmedArticle/MedlineCitation'):
+            pmid = item.find('PMID').text
+            article = item.find('Article')
+            title = article.find('ArticleTitle').text
+            try:
+                abstract = article.find('Abstract/AbstractText').text
+            except:
+                abstract = ''
+            pubdate_str = ''
+            try:
+                for pubdate in article.findall('.//PubDate'):
+                    pubyear = pubdate.find('Year').text
+                    pubmonth = pubdate.find('Month').text
+                    pubdate_str = '%s/%s' % (pubyear, pubmonth)
+            except:
+                pass
+
+            result.append({'pmid': pmid, 'title': title, 'abstract': abstract,
+                           'pubdate': pubdate_str})
+
+        return result
+    except:
+        raise
+
+
+def batch_results(payload, pmids):
+    items_per_page = payload['itemsPerPage']
+    page = payload['page']
+
+    result = []
+    if len(pmids) > 0:
+        total = len(pmids)
+        if len(pmids) > items_per_page:
+            offset = (page - 1) * items_per_page
+            pmids = pmids[offset:offset + items_per_page]
+        result = fetch_articles(pmids)
+        return jsonify(status='ok', total=total, data=result)
+
+
+@app.route('/cancer_mutation_docs/<hr>/<cancer>/<mutation>', methods=['POST'])
+def cancer_mutation_docs(hr, cancer, mutation):
+    pmids = datasets.cancer_mutation(all_datasets, hr, cancer, mutation)
+    return batch_results(request.get_json(), pmids)
+
+
+@app.route('/disease_mutation_docs/<hr>/<disease>/<mutation>', methods=['POST'])
+def disease_mutation_docs(hr, disease, mutation):
+    pmids = datasets.disease_mutation(all_datasets, hr, disease, mutation)
+    return batch_results(request.get_json(), pmids)
+
+
+@app.route('/disease_regulator_docs/<hr>/<disease>/<regulator>', methods=['POST'])
+def disease_regulator_docs(hr, disease, regulator):
+    pmids = datasets.disease_regulator(all_datasets, hr, disease, regulator)
+    return batch_results(request.get_json(), pmids)
+
+
+@app.route('/disease_regulon_docs/<hr>/<disease>/<regulon>', methods=['POST'])
+def disease_regulon_docs(hr, disease, regulon):
+    pmids = datasets.disease_regulon(all_datasets, hr, disease, regulon)
+    return batch_results(request.get_json(), pmids)
+
+
+@app.route('/mutation_regulator_docs/<hr>/<mutation>/<regulator>', methods=['POST'])
+def mutation_regulator_docs(hr, mutation, regulator):
+    pmids = datasets.mutation_regulator(all_datasets, hr, mutation, regulator)
+    return batch_results(request.get_json(), pmids)
+
+
+@app.route('/mutation_drug_docs/<hr>/<mutation>/<drug>', methods=['POST'])
+def mutation_drug_docs(hr, mutation, drug):
+    pmids = datasets.mutation_drug(all_datasets, hr, mutation, drug)
+    return batch_results(request.get_json(), pmids)
+
+
 
 if __name__ == '__main__':
     app.debug = True
