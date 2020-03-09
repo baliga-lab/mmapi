@@ -234,7 +234,7 @@ def disease_mutation(all_datasets, hr, disease, mutation):
 
 def disease_regulator(all_datasets, hr, disease, regulator):
     disease_regulator = all_datasets[int(hr)]['mm_regulator']['regulator']
-    mm_disease = all_datasets[int(hr)]['mm_mutation']['disease']
+    mm_disease = all_datasets[int(hr)]['mm_regulator']['disease']
     disease_pmids = set()
     regulator_pmids = set()
 
@@ -256,7 +256,7 @@ def disease_regulator(all_datasets, hr, disease, regulator):
 
 def disease_regulon(all_datasets, hr, disease, regulon):
     disease_regulon = all_datasets[int(hr)]['mm_regulon']['regulon']
-    mm_disease = all_datasets[int(hr)]['mm_mutation']['disease']
+    mm_disease = all_datasets[int(hr)]['mm_regulon']['disease']
     disease_pmids = set()
     regulon_pmids = set()
 
