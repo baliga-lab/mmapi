@@ -1,11 +1,13 @@
 import os
 from collections import defaultdict
 
-def read_cancer_mutation(datadir, hr):
+def read_cancer_mutation(datadir, hr, all_cancers, all_mutations):
     """Return a PMID dataset that is indexed for both cancers and mutations"""
     result = {}
     result['cancer'] = defaultdict(set)
     result['mutation'] = defaultdict(set)
+    result['pmid_cancer'] = defaultdict(set)
+    result['pmid_mutation'] = defaultdict(set)
 
     with open(os.path.join(datadir, 'Mut_Cancer_HR_%d.txt' % hr)) as infile:
         header = infile.readline()
@@ -13,11 +15,16 @@ def read_cancer_mutation(datadir, hr):
             row = line.strip().split('\t')
             if len(row) > 1:
                 # synonyms for cancer
-                diseases = [d for d in row[0].strip('"').split(' or ') if len(d.strip()) > 0]
+                cancers = [c for c in row[0].strip('"').split(' or ') if len(c.strip()) > 0]
                 mutation = row[1].strip()
+                all_cancers.update(cancers)
+                all_mutations.add(mutation)
                 pmids = [s.strip() for s in row[6].split('|') if len(s.strip()) > 0]
-                for d in diseases:
-                    result['cancer'][d].update(pmids)
+                for c in cancers:
+                    result['cancer'][c].update(pmids)
+                for pmid in pmids:
+                    result['pmid_cancer'][pmid].update(cancers)
+                    result['pmid_mutation'][pmid].add(mutation)
                 result['mutation'][mutation].update(pmids)
     return result
 
@@ -150,11 +157,8 @@ def read_all_datasets(datadir):
         result[hr] = {}
         print('Hazard ratio %d...' % hr)
         # add the cancer dataset for this hr
-        ds = read_cancer_mutation(datadir, hr)
-        cancers = ds['cancer'].keys()
-        result[hr]['cancers'] = ds
-        for c in cancers:
-            all_cancers.add(c)
+        ds = read_cancer_mutation(datadir, hr, all_cancers, all_mutations)
+        result[hr]['cancer_mutation'] = ds
 
         ds, tmp_all_diseases = read_mm_mutation(datadir, hr)
         result[hr]['mm_mutation'] = ds
@@ -192,8 +196,8 @@ Queries
 """
 
 def cancer_mutation(all_datasets, hr, cancer, mutation):
-    mm_mutation = all_datasets[int(hr)]['cancers']['mutation']
-    mm_cancer = all_datasets[int(hr)]['cancers']['cancer']
+    mm_mutation = all_datasets[int(hr)]['cancer_mutation']['mutation']
+    mm_cancer = all_datasets[int(hr)]['cancer_mutation']['cancer']
     mutation_pmids = set()
     cancer_pmids = set()
     if mutation == 'All':
