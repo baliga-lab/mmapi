@@ -9,16 +9,20 @@ def read_cancer_mutation(datadir, hr, hr_result, all_cancers, all_mutations):
     result['mutation'] = defaultdict(set)
 
     with open(os.path.join(datadir, 'Mut_Cancer_HR_%d.txt' % hr)) as infile:
-        header = infile.readline()
+        header = infile.readline().strip().split('\t')
+        cancer_col = header.index('Disease')
+        mutation_col = header.index('Mutation')
+        pmids_col = header.index('PMIDs')
         for line in infile:
             row = line.strip().split('\t')
             if len(row) > 1:
                 # synonyms for cancer
-                cancers = [c for c in row[0].strip('"').split(' or ') if len(c.strip()) > 0]
-                mutation = row[1].strip()
+                cancers = [c for c in row[cancer_col].strip('"').split(' or ')
+                           if len(c.strip()) > 0]
+                mutation = row[mutation_col].strip()
                 all_cancers.update(cancers)
                 all_mutations.add(mutation)
-                pmids = [s.strip() for s in row[6].split('|') if len(s.strip()) > 0]
+                pmids = [s.strip() for s in row[pmids_col].split('|') if len(s.strip()) > 0]
                 for c in cancers:
                     result['cancer'][c].update(pmids)
                 for pmid in pmids:
@@ -35,16 +39,23 @@ def read_mm_mutation(datadir, hr, hr_result, all_diseases, all_mutations):
     result['mutation'] = defaultdict(set)
 
     with open(os.path.join(datadir, 'Mut_MM_HR_%d.txt' % hr)) as infile:
-        header = infile.readline()
+        header = infile.readline().strip().split('\t')
+        disease_col = header.index('Disease')
+        pmids_col = header.index('PMIDs')
+        try:
+            mutation_col = header.index('Mutation')
+        except:
+            print("WARNING: Dataset 'Mut_MM_HR_%d.txt' has no 'Mutation' column" % hr)
+            return
         for line in infile:
             row = line.split('\t')
-            diseases = [d for d in row[0].strip('"').split(' or ') if len(d.strip()) > 0]
+            diseases = [d for d in row[disease_col].strip('"').split(' or ') if len(d.strip()) > 0]
             all_diseases.update(diseases)
-            mutation = row[1].strip()
+            mutation = row[mutation_col].strip()
             if len(mutation.strip()) > 0:
                 all_mutations.add(mutation)
 
-            pmids = [s.strip() for s in row[6].split('|') if len(s.strip()) > 0]
+            pmids = [s.strip() for s in row[pmids_col].split('|') if len(s.strip()) > 0]
             for d in diseases:
                 result['disease'][d].update(pmids)
             result['mutation'][mutation].update(pmids)
@@ -58,17 +69,21 @@ def read_mm_regulator(datadir, hr, hr_result, all_diseases, all_regulators):
     result['regulator'] = defaultdict(set)
 
     with open(os.path.join(datadir, 'Regulator_MM_HR_%d.txt' % hr)) as infile:
-        header = infile.readline()
+        header = infile.readline().strip().split('\t')
+        disease_col = header.index('Disease')
+        regulator_col = header.index('Regulator')
+        pmids_col = header.index('PMIDs')
         for line in infile:
             row = line.split('\t')
             if len(row) > 1:
-                diseases = [d for d in row[0].strip('"').split(' or ') if len(d.strip()) > 0]
+                diseases = [d for d in row[disease_col].strip('"').split(' or ')
+                            if len(d.strip()) > 0]
                 all_diseases.update(diseases)
-                regulator = row[1].strip()
+                regulator = row[regulator_col].strip()
                 if len(regulator.strip()) > 0:
                     all_regulators.add(regulator)
                 regulator_ensg = row[2].strip()
-                pmids = [s.strip() for s in row[7].split('|') if len(s.strip()) > 0]
+                pmids = [s.strip() for s in row[pmids_col].split('|') if len(s.strip()) > 0]
                 for d in diseases:
                     result['disease'][d].update(pmids)
                 result['regulator'][regulator].update(pmids)
@@ -82,17 +97,21 @@ def read_mm_regulon(datadir, hr, hr_result, all_diseases, all_regulons):
     result['regulon'] = defaultdict(set)
 
     with open(os.path.join(datadir, 'Regulon_MM_HR_%d.txt' % hr)) as infile:
-        header = infile.readline()
+        header = infile.readline().strip().split('\t')
+        disease_col = header.index('Disease')
+        regulon_col = header.index('Regulon')
+        pmids_col = header.index('PMIDs')
         for line in infile:
             row = line.split('\t')
             if len(row) > 1:
-                diseases = [d for d in row[0].strip('"').split(' or ') if len(d.strip()) > 0]
+                diseases = [d for d in row[disease_col].strip('"').split(' or ')
+                            if len(d.strip()) > 0]
                 all_diseases.update(diseases)
-                regulon = row[1]
+                regulon = row[regulon_col]
                 if len(regulon.strip()) > 0:
                     all_regulons.add(regulon)
                 regulon_ensg = row[2]
-                pmids = [s.strip() for s in row[7].split('|') if len(s.strip()) > 0]
+                pmids = [s.strip() for s in row[pmids_col].split('|') if len(s.strip()) > 0]
                 for d in diseases:
                     result['disease'][d].update(pmids)
                 result['regulon'][regulon].update(pmids)
@@ -109,6 +128,7 @@ def read_mutation_regulator(datadir, hr, hr_result, all_mutations, all_regulator
     with open(os.path.join(datadir, 'Mut_Regulators_Raw_HR_%d.txt' % hr)) as infile:
         header = infile.readline().strip().split('\t')
         mutation_col = header.index('Mutation')
+        pmids_col = header.index('PMIDs')
         try:
             regulator_col = header.index('Regulator')
         except:
@@ -127,7 +147,7 @@ def read_mutation_regulator(datadir, hr, hr_result, all_mutations, all_regulator
                     all_regulators.add(regulator)
                 else:
                     continue
-                pmids = [s.strip() for s in row[9].split('|') if len(s.strip()) > 0]
+                pmids = [s.strip() for s in row[pmids_col].split('|') if len(s.strip()) > 0]
                 result['mutation'][mutation].update(pmids)
                 result['regulator'][regulator].update(pmids)
 
@@ -139,14 +159,17 @@ def read_mutation_drugs(datadir, hr, hr_result, all_mutations, all_drugs):
     result['drug'] = defaultdict(set)
 
     with open(os.path.join(datadir, 'Mut_Drugs_Raw_HR_%d.txt' % hr)) as infile:
-        header = infile.readline()
+        header = infile.readline().strip().split('\t')
+        mutation_col = header.index('Mutation')
+        drugs_col = header.index('Drugs')
+        pmids_col = header.index('PMIDs')
         for line in infile:
             row = line.split('\t')
             if len(row) > 1:
-                mutation = row[0]
-                drugs = [d for d in row[1].strip('"').split(' or ') if len(d.strip()) > 0]
+                mutation = row[mutation_col]
+                drugs = [d for d in row[drugs_col].strip('"').split(' or ') if len(d.strip()) > 0]
                 all_drugs.update(drugs)
-                pmids = [s.strip() for s in row[8].split('|') if len(s.strip()) > 0]
+                pmids = [s.strip() for s in row[pmids_col].split('|') if len(s.strip()) > 0]
                 if len(mutation.strip()) > 0:
                     all_mutations.add(mutation)
                     result['mutation'][mutation].update(pmids)
