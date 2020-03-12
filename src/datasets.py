@@ -46,19 +46,22 @@ def read_mm_mutation(datadir, hr, hr_result, all_diseases, all_mutations):
             mutation_col = header.index('Mutation')
         except:
             print("WARNING: Dataset 'Mut_MM_HR_%d.txt' has no 'Mutation' column" % hr)
-            return
+            mutation_col = header.index('Mutations')
+
         for line in infile:
             row = line.split('\t')
             diseases = [d for d in row[disease_col].strip('"').split(' or ') if len(d.strip()) > 0]
             all_diseases.update(diseases)
-            mutation = row[mutation_col].strip()
-            if len(mutation.strip()) > 0:
-                all_mutations.add(mutation)
+            mutations = [m.strip() for m in row[mutation_col].strip().split(' or ')
+                         if len(m.strip()) > 0]
+            if len(mutations) > 0:
+                all_mutations.update(mutations)
 
             pmids = [s.strip() for s in row[pmids_col].split('|') if len(s.strip()) > 0]
             for d in diseases:
                 result['disease'][d].update(pmids)
-            result['mutation'][mutation].update(pmids)
+            for mutation in mutations:
+                result['mutation'][mutation].update(pmids)
 
 
 def read_mm_regulator(datadir, hr, hr_result, all_diseases, all_regulators):
@@ -132,8 +135,9 @@ def read_mutation_regulator(datadir, hr, hr_result, all_mutations, all_regulator
         try:
             regulator_col = header.index('Regulator')
         except:
+            # there is a multivalued Regulators column
             print("WARNING: no 'Regulator' column found in 'Mut_Regulators_Raw_HR_%d.txt'" % hr)
-            return
+            regulator_col = header.index('Regulators')
         for line in infile:
             row = line.strip().split('\t')
             if len(row) > 1:
@@ -142,14 +146,16 @@ def read_mutation_regulator(datadir, hr, hr_result, all_mutations, all_regulator
                     all_mutations.add(mutation)
                 else:
                     continue
-                regulator = row[regulator_col]
-                if len(regulator.strip()) > 0:
-                    all_regulators.add(regulator)
+                regulators = [r.strip() for r in row[regulator_col].strip().split(' or ')
+                              if len(r.strip()) > 0]
+                if len(regulators) > 0:
+                    all_regulators.update(regulators)
                 else:
                     continue
                 pmids = [s.strip() for s in row[pmids_col].split('|') if len(s.strip()) > 0]
                 result['mutation'][mutation].update(pmids)
-                result['regulator'][regulator].update(pmids)
+                for regulator in regulators:
+                    result['regulator'][regulator].update(pmids)
 
 
 def read_mutation_drugs(datadir, hr, hr_result, all_mutations, all_drugs):
