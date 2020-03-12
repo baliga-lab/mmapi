@@ -569,44 +569,73 @@ def batch_results(payload, pmids):
         if len(pmids) > items_per_page:
             offset = (page - 1) * items_per_page
             pmids = pmids[offset:offset + items_per_page]
-        result = fetch_articles(pmids)
-        return jsonify(status='ok', total=total, data=result)
+        return fetch_articles(pmids)
 
 
 @app.route('/cancer_mutation_docs/<hr>/<cancer>/<mutation>', methods=['POST'])
 def cancer_mutation_docs(hr, cancer, mutation):
     pmids = datasets.cancer_mutation(all_datasets, hr, cancer, mutation)
-    return batch_results(request.get_json(), pmids)
+    total = len(pmids)
+    result = batch_results(request.get_json(), pmids)
+    for entry in result:
+        assocs = all_datasets[int(hr)]['pmid_mutation'][entry['pmid']]
+        entry['assocs'] = ', '.join(list(assocs))
+    return jsonify(status='ok', total=total, data=result)
 
 
 @app.route('/disease_mutation_docs/<hr>/<disease>/<mutation>', methods=['POST'])
 def disease_mutation_docs(hr, disease, mutation):
     pmids = datasets.disease_mutation(all_datasets, hr, disease, mutation)
-    return batch_results(request.get_json(), pmids)
+    total = len(pmids)
+    result = batch_results(request.get_json(), pmids)
+    for entry in result:
+        assocs = all_datasets[int(hr)]['pmid_mutation'][entry['pmid']]
+        entry['assocs'] = ', '.join(list(assocs))
+    return jsonify(status='ok', total=total, data=result)
 
 
 @app.route('/disease_regulator_docs/<hr>/<disease>/<regulator>', methods=['POST'])
 def disease_regulator_docs(hr, disease, regulator):
     pmids = datasets.disease_regulator(all_datasets, hr, disease, regulator)
-    return batch_results(request.get_json(), pmids)
+    total = len(pmids)
+    result = batch_results(request.get_json(), pmids)
+    for entry in result:
+        assocs = all_datasets[int(hr)]['pmid_regulator'][entry['pmid']]
+        entry['assocs'] = ', '.join(list(assocs))
+    return jsonify(status='ok', total=total, data=result)
 
 
 @app.route('/disease_regulon_docs/<hr>/<disease>/<regulon>', methods=['POST'])
 def disease_regulon_docs(hr, disease, regulon):
     pmids = datasets.disease_regulon(all_datasets, hr, disease, regulon)
-    return batch_results(request.get_json(), pmids)
+    total = len(pmids)
+    result = batch_results(request.get_json(), pmids)
+    for entry in result:
+        assocs = all_datasets[int(hr)]['pmid_regulon'][entry['pmid']]
+        entry['assocs'] = ', '.join(list(assocs))
+    return jsonify(status='ok', total=total, data=result)
 
 
 @app.route('/mutation_regulator_docs/<hr>/<mutation>/<regulator>', methods=['POST'])
 def mutation_regulator_docs(hr, mutation, regulator):
     pmids = datasets.mutation_regulator(all_datasets, hr, mutation, regulator)
-    return batch_results(request.get_json(), pmids)
+    total = len(pmids)
+    result = batch_results(request.get_json(), pmids)
+    for entry in result:
+        assocs = all_datasets[int(hr)]['pmid_regulator'][entry['pmid']]
+        entry['assocs'] = ', '.join(list(assocs))
+    return jsonify(status='ok', total=total, data=result)
 
 
 @app.route('/mutation_drug_docs/<hr>/<mutation>/<drug>', methods=['POST'])
 def mutation_drug_docs(hr, mutation, drug):
     pmids = datasets.mutation_drug(all_datasets, hr, mutation, drug)
-    return batch_results(request.get_json(), pmids)
+    total = len(pmids)
+    result = batch_results(request.get_json(), pmids)
+    for entry in result:
+        assocs = all_datasets[int(hr)]['pmid_drug'][entry['pmid']]
+        entry['assocs'] = ', '.join(list(assocs))
+    return jsonify(status='ok', total=total, data=result)
 
 
 
