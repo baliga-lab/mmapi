@@ -63,6 +63,10 @@ def read_mm_mutation(datadir, hr, hr_result, all_diseases, all_mutations):
             for mutation in mutations:
                 result['mutation'][mutation].update(pmids)
 
+            for pmid in pmids:
+                hr_result['pmid_disease'][pmid].update(diseases)
+                hr_result['pmid_mutation'][pmid].update(mutations)
+
 
 def read_mm_regulator(datadir, hr, hr_result, all_diseases, all_regulators):
     """also known as disease regulator"""
@@ -91,6 +95,10 @@ def read_mm_regulator(datadir, hr, hr_result, all_diseases, all_regulators):
                     result['disease'][d].update(pmids)
                 result['regulator'][regulator].update(pmids)
 
+                for pmid in pmids:
+                    hr_result['pmid_disease'][pmid].update(diseases)
+                    hr_result['pmid_regulator'][pmid].add(regulator)
+
 
 def read_mm_regulon(datadir, hr, hr_result, all_diseases, all_regulons):
     """also known as disease regulon"""
@@ -118,6 +126,10 @@ def read_mm_regulon(datadir, hr, hr_result, all_diseases, all_regulons):
                 for d in diseases:
                     result['disease'][d].update(pmids)
                 result['regulon'][regulon].update(pmids)
+
+                for pmid in pmids:
+                    hr_result['pmid_disease'][pmid].update(diseases)
+                    hr_result['pmid_regulon'][pmid].add(regulon)
 
 
 def read_mutation_regulator(datadir, hr, hr_result, all_mutations, all_regulators):
@@ -157,6 +169,10 @@ def read_mutation_regulator(datadir, hr, hr_result, all_mutations, all_regulator
                 for regulator in regulators:
                     result['regulator'][regulator].update(pmids)
 
+                for pmid in pmids:
+                    hr_result['pmid_regulator'][pmid].update(regulators)
+                    hr_result['pmid_mutation'][pmid].add(mutation)
+
 
 def read_mutation_drugs(datadir, hr, hr_result, all_mutations, all_drugs):
     result = {}
@@ -182,6 +198,10 @@ def read_mutation_drugs(datadir, hr, hr_result, all_mutations, all_drugs):
                 for drug in drugs:
                     result['drug'][drug].update(pmids)
 
+                for pmid in pmids:
+                    hr_result['pmid_drug'][pmid].update(drugs)
+                    hr_result['pmid_mutation'][pmid].add(mutation)
+
 
 def read_all_datasets(datadir):
     print('Reading in all datasets')
@@ -198,7 +218,10 @@ def read_all_datasets(datadir):
         # document assoctiations are global within an HR value
         hr_result['pmid_cancer'] = defaultdict(set)
         hr_result['pmid_mutation'] = defaultdict(set)
-
+        hr_result['pmid_disease'] = defaultdict(set)
+        hr_result['pmid_regulator'] = defaultdict(set)
+        hr_result['pmid_regulon'] = defaultdict(set)
+        hr_result['pmid_drug'] = defaultdict(set)
 
         result[hr] = hr_result
         print('Hazard ratio %d...' % hr)
