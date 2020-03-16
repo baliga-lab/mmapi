@@ -570,6 +570,7 @@ def batch_results(payload, pmids):
             offset = (page - 1) * items_per_page
             pmids = pmids[offset:offset + items_per_page]
         return fetch_articles(pmids)
+    return result
 
 
 @app.route('/cancer_mutation_docs/<hr>/<cancer>/<mutation>', methods=['POST'])
