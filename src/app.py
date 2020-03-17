@@ -573,6 +573,12 @@ def batch_results(payload, pmids):
     return result
 
 
+def markup_assocs(content, assocs):
+    for assoc in assocs:
+        regexp = re.compile(re.escape(assoc), re.IGNORECASE)
+        content = regexp.sub('<span class="marked">' + assoc + '</span>', content)
+    return content
+
 @app.route('/cancer_mutation_docs/<hr>/<cancer>/<mutation>', methods=['POST'])
 def cancer_mutation_docs(hr, cancer, mutation):
     pmids = datasets.cancer_mutation(all_datasets, hr, cancer, mutation)
@@ -580,6 +586,7 @@ def cancer_mutation_docs(hr, cancer, mutation):
     result = batch_results(request.get_json(), pmids)
     for entry in result:
         assocs = all_datasets[int(hr)]['pmid_mutation'][entry['pmid']]
+        entry['abstract'] = markup_assocs(entry['abstract'], assocs)
         entry['assocs'] = ', '.join(list(assocs))
     return jsonify(status='ok', total=total, data=result)
 
@@ -592,6 +599,7 @@ def disease_mutation_docs(hr, disease, mutation):
     for entry in result:
         assocs = all_datasets[int(hr)]['pmid_mutation'][entry['pmid']]
         entry['assocs'] = ', '.join(list(assocs))
+        entry['abstract'] = markup_assocs(entry['abstract'], assocs)
     return jsonify(status='ok', total=total, data=result)
 
 
@@ -603,6 +611,11 @@ def disease_regulator_docs(hr, disease, regulator):
     for entry in result:
         assocs = all_datasets[int(hr)]['pmid_regulator'][entry['pmid']]
         entry['assocs'] = ', '.join(list(assocs))
+        try:
+            entry['abstract'] = markup_assocs(entry['abstract'], assocs)
+            print(entry['abstract'])
+        except:
+            traceback.print_exc()
     return jsonify(status='ok', total=total, data=result)
 
 
@@ -614,6 +627,7 @@ def disease_regulon_docs(hr, disease, regulon):
     for entry in result:
         assocs = all_datasets[int(hr)]['pmid_regulon'][entry['pmid']]
         entry['assocs'] = ', '.join(list(assocs))
+        entry['abstract'] = markup_assocs(entry['abstract'], assocs)
     return jsonify(status='ok', total=total, data=result)
 
 
@@ -625,6 +639,7 @@ def mutation_regulator_docs(hr, mutation, regulator):
     for entry in result:
         assocs = all_datasets[int(hr)]['pmid_regulator'][entry['pmid']]
         entry['assocs'] = ', '.join(list(assocs))
+        entry['abstract'] = markup_assocs(entry['abstract'], assocs)
     return jsonify(status='ok', total=total, data=result)
 
 
@@ -636,6 +651,7 @@ def mutation_drug_docs(hr, mutation, drug):
     for entry in result:
         assocs = all_datasets[int(hr)]['pmid_drug'][entry['pmid']]
         entry['assocs'] = ', '.join(list(assocs))
+        entry['abstract'] = markup_assocs(entry['abstract'], assocs)
     return jsonify(status='ok', total=total, data=result)
 
 
