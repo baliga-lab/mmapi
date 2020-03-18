@@ -585,9 +585,15 @@ def cancer_mutation_docs(hr, cancer, mutation):
     total = len(pmids)
     result = batch_results(request.get_json(), pmids)
     for entry in result:
-        assocs = all_datasets[int(hr)]['pmid_mutation'][entry['pmid']]
+        #assocs = all_datasets[int(hr)]['pmid_mutation'][entry['pmid']]
+        assocs = []
+        if cancer != 'All':
+            assocs.append(cancer)
+        if mutation != 'All':
+            assocs.append(mutation)
+
         entry['abstract'] = markup_assocs(entry['abstract'], assocs)
-        entry['assocs'] = ', '.join(list(assocs))
+        entry['assocs'] = '->'.join(list(assocs))
     return jsonify(status='ok', total=total, data=result)
 
 
@@ -597,8 +603,14 @@ def disease_mutation_docs(hr, disease, mutation):
     total = len(pmids)
     result = batch_results(request.get_json(), pmids)
     for entry in result:
-        assocs = all_datasets[int(hr)]['pmid_mutation'][entry['pmid']]
-        entry['assocs'] = ', '.join(list(assocs))
+        #assocs = all_datasets[int(hr)]['pmid_mutation'][entry['pmid']]
+        assocs = []
+        if disease != 'All':
+            assocs.append(disease)
+        if mutation != 'All':
+            assocs.append(mutation)
+
+        entry['assocs'] = '->'.join(list(assocs))
         entry['abstract'] = markup_assocs(entry['abstract'], assocs)
     return jsonify(status='ok', total=total, data=result)
 
@@ -609,11 +621,16 @@ def disease_regulator_docs(hr, disease, regulator):
     total = len(pmids)
     result = batch_results(request.get_json(), pmids)
     for entry in result:
-        assocs = all_datasets[int(hr)]['pmid_regulator'][entry['pmid']]
-        entry['assocs'] = ', '.join(list(assocs))
+        #assocs = all_datasets[int(hr)]['pmid_regulator'][entry['pmid']]
+        assocs = []
+        if disease != 'All':
+            assocs.append(disease)
+        if regulator != 'All':
+            assocs.append(regulator)
+
+        entry['assocs'] = '->'.join(list(assocs))
         try:
             entry['abstract'] = markup_assocs(entry['abstract'], assocs)
-            print(entry['abstract'])
         except:
             traceback.print_exc()
     return jsonify(status='ok', total=total, data=result)
@@ -625,8 +642,14 @@ def disease_regulon_docs(hr, disease, regulon):
     total = len(pmids)
     result = batch_results(request.get_json(), pmids)
     for entry in result:
-        assocs = all_datasets[int(hr)]['pmid_regulon'][entry['pmid']]
-        entry['assocs'] = ', '.join(list(assocs))
+        #assocs = all_datasets[int(hr)]['pmid_regulon'][entry['pmid']]
+        assocs = []
+        if disease != 'All':
+            assocs.append(disease)
+        if regulon != 'All':
+            assocs.append(regulon)
+
+        entry['assocs'] = '->'.join(list(assocs))
         entry['abstract'] = markup_assocs(entry['abstract'], assocs)
     return jsonify(status='ok', total=total, data=result)
 
@@ -637,8 +660,14 @@ def mutation_regulator_docs(hr, mutation, regulator):
     total = len(pmids)
     result = batch_results(request.get_json(), pmids)
     for entry in result:
-        assocs = all_datasets[int(hr)]['pmid_regulator'][entry['pmid']]
-        entry['assocs'] = ', '.join(list(assocs))
+        #assocs = all_datasets[int(hr)]['pmid_regulator'][entry['pmid']]
+        assocs = []
+        if mutation != 'All':
+            assocs.append(mutation)
+        if regulator != 'All':
+            assocs.append(regulator)
+
+        entry['assocs'] = '->'.join(list(assocs))
         entry['abstract'] = markup_assocs(entry['abstract'], assocs)
     return jsonify(status='ok', total=total, data=result)
 
@@ -649,8 +678,15 @@ def mutation_drug_docs(hr, mutation, drug):
     total = len(pmids)
     result = batch_results(request.get_json(), pmids)
     for entry in result:
-        assocs = all_datasets[int(hr)]['pmid_drug'][entry['pmid']]
-        entry['assocs'] = ', '.join(list(assocs))
+        assocs = []
+        if mutation != 'All':
+            #mutation_assocs = all_datasets[int(hr)]['pmid_mutation'][entry['pmid']]
+            assocs.append(mutation)
+        if drug != 'All':
+            #drug_assocs = all_datasets[int(hr)]['pmid_drug'][entry['pmid']]
+            assocs.append(drug)
+
+        entry['assocs'] = '->'.join(list(assocs))
         entry['abstract'] = markup_assocs(entry['abstract'], assocs)
     return jsonify(status='ok', total=total, data=result)
 
