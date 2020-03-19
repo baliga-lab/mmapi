@@ -371,3 +371,84 @@ def mutation_drug(all_datasets, hr, mutation, drug):
 
     pmids = mutation_pmids.intersection(drug_pmids)
     return list(pmids)
+
+
+def search_cancer_mutation(all_datasets, hr, search_term):
+    pmids = set()
+    mm_mutation = all_datasets[int(hr)]['cancer_mutation']['mutation']
+    mm_cancer = all_datasets[int(hr)]['cancer_mutation']['cancer']
+
+    for mutation in mm_mutation:
+        if mutation.find(search_term) >= 0:
+            pmids.update(mm_mutation[mutation])
+    for cancer in mm_cancer:
+        if cancer.find(search_term) >= 0:
+            pmids.update(mm_cancer[cancer])
+    return list(pmids)
+
+
+def search_disease_mutation(all_datasets, hr, search_term):
+    pmids = set()
+    mm_mutation = all_datasets[int(hr)]['mm_mutation']['mutation']
+    mm_disease = all_datasets[int(hr)]['mm_mutation']['disease']
+
+    for mutation in mm_mutation:
+        if mutation.find(search_term) >= 0:
+            pmids.update(mm_mutation[mutation])
+    for disease in mm_disease:
+        if disease.find(search_term) >= 0:
+            pmids.update(mm_disease[disease])
+    return list(pmids)
+
+
+def search_disease_regulator(all_datasets, hr, search_term):
+    pmids = set()
+    disease_regulator = all_datasets[int(hr)]['mm_regulator']['regulator']
+    mm_disease = all_datasets[int(hr)]['mm_regulator']['disease']
+
+    for regulator in disease_regulator:
+        if regulator.find(search_term) >= 0:
+            pmids.update(disease_regulator[regulator])
+    for disease in mm_disease:
+        if disease.find(search_term) >= 0:
+            pmids.update(mm_disease[disease])
+    return list(pmids)
+
+
+def search_disease_regulon(all_datasets, hr, search_term):
+    pmids = set()
+    disease_regulon = all_datasets[int(hr)]['mm_regulon']['regulon']
+    mm_disease = all_datasets[int(hr)]['mm_regulon']['disease']
+    for regulon in disease_regulon:
+        if regulon.find(search_term) >= 0:
+            pmids.update(disease_regulon[regulon])
+    for disease in mm_disease:
+        if disease.find(search_term) >= 0:
+            pmids.update(mm_disease[disease])
+    return list(pmids)
+
+
+def search_mutation_regulator(all_datasets, hr, search_term):
+    pmids = set()
+    mutation_regulator_m = all_datasets[int(hr)]['mutation_regulator']['mutation']
+    mutation_regulator_r = all_datasets[int(hr)]['mutation_regulator']['regulator']
+    for mutation in mutation_regulator_m:
+        if mutation.find(search_term) >= 0:
+            pmids.update(mutation_regulator_m[mutation])
+    for regulator in mutation_regulator_r:
+        if regulator.find(search_term) >= 0:
+            pmids.update(mutation_regulator_r[regulator])
+    return list(pmids)
+
+
+def search_mutation_drug(all_datasets, hr, search_term):
+    pmids = set()
+    mutation_drug_m = all_datasets[int(hr)]['mutation_drugs']['mutation']
+    mutation_drug_d = all_datasets[int(hr)]['mutation_drugs']['drug']
+    for mutation, elems in mutation_drug_m.items():
+        if mutation.find(search_term) >= 0:
+            pmids.update(elems)
+    for drug, elems in mutation_drug_d.items():
+        if drug.find(search_term) >= 0:
+            pmids.update(elems)
+    return list(pmids)

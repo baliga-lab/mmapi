@@ -526,6 +526,20 @@ def pmid_counts(hr, cancer, disease, mutation, regulator, regulon, drug):
                    num_mutation_drug_pmids=len(datasets.mutation_drug(all_datasets, hr, mutation, drug)))
 
 
+@app.route('/search_pmid_counts/<hr>', methods=['POST'])
+def search_pmid_counts(hr):
+    reqdata = request.get_json()
+    search_term = reqdata['search']
+    print(search_term)
+    return jsonify(status="ok",
+                   num_cancer_mutation_pmids=len(datasets.search_cancer_mutation(all_datasets, hr, search_term)),
+                   num_disease_mutation_pmids=len(datasets.search_disease_mutation(all_datasets, hr, search_term)),
+                   num_disease_regulator_pmids=len(datasets.search_disease_regulator(all_datasets, hr, search_term)),
+                   num_disease_regulon_pmids=len(datasets.search_disease_regulon(all_datasets, hr, search_term)),
+                   num_mutation_regulator_pmids=len(datasets.search_mutation_regulator(all_datasets, hr, search_term)),
+                   num_mutation_drug_pmids=len(datasets.search_mutation_drug(all_datasets, hr, search_term)))
+
+
 def fetch_articles(pmids):
     pmid_str = ','.join(pmids)
     url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=%s&retmode=xml" % pmid_str
@@ -597,6 +611,23 @@ def cancer_mutation_docs(hr, cancer, mutation):
     return jsonify(status='ok', total=total, data=result)
 
 
+def __make_search_results(pmids, search_term):
+    total = len(pmids)
+    result = batch_results(request.get_json(), pmids)
+    assocs = [search_term]
+    for entry in result:
+        entry['assocs'] = search_term
+        entry['abstract'] = markup_assocs(entry['abstract'], assocs)
+    return result, total
+
+
+@app.route('/cancer_mutation_search/<hr>/<search_term>', methods=['POST'])
+def cancer_mutation_search(hr, search_term):
+    pmids = datasets.search_cancer_mutation(all_datasets, hr, search_term)
+    result, total = __make_search_results(pmids, search_term)
+    return jsonify(status='ok', total=total, data=result)
+
+
 @app.route('/disease_mutation_docs/<hr>/<disease>/<mutation>', methods=['POST'])
 def disease_mutation_docs(hr, disease, mutation):
     pmids = datasets.disease_mutation(all_datasets, hr, disease, mutation)
@@ -612,6 +643,13 @@ def disease_mutation_docs(hr, disease, mutation):
 
         entry['assocs'] = '->'.join(list(assocs))
         entry['abstract'] = markup_assocs(entry['abstract'], assocs)
+    return jsonify(status='ok', total=total, data=result)
+
+
+@app.route('/disease_mutation_search/<hr>/<search_term>', methods=['POST'])
+def disease_mutation_search(hr, search_term):
+    pmids = datasets.search_disease_mutation(all_datasets, hr, search_term)
+    result, total = __make_search_results(pmids, search_term)
     return jsonify(status='ok', total=total, data=result)
 
 
@@ -636,6 +674,13 @@ def disease_regulator_docs(hr, disease, regulator):
     return jsonify(status='ok', total=total, data=result)
 
 
+@app.route('/disease_regulator_search/<hr>/<search_term>', methods=['POST'])
+def disease_regulator_search(hr, search_term):
+    pmids = datasets.search_disease_regulator(all_datasets, hr, search_term)
+    result, total = __make_search_results(pmids, search_term)
+    return jsonify(status='ok', total=total, data=result)
+
+
 @app.route('/disease_regulon_docs/<hr>/<disease>/<regulon>', methods=['POST'])
 def disease_regulon_docs(hr, disease, regulon):
     pmids = datasets.disease_regulon(all_datasets, hr, disease, regulon)
@@ -651,6 +696,13 @@ def disease_regulon_docs(hr, disease, regulon):
 
         entry['assocs'] = '->'.join(list(assocs))
         entry['abstract'] = markup_assocs(entry['abstract'], assocs)
+    return jsonify(status='ok', total=total, data=result)
+
+
+@app.route('/disease_regulon_search/<hr>/<search_term>', methods=['POST'])
+def disease_regulon_search(hr, search_term):
+    pmids = datasets.search_disease_regulon(all_datasets, hr, search_term)
+    result, total = __make_search_results(pmids, search_term)
     return jsonify(status='ok', total=total, data=result)
 
 
@@ -672,6 +724,13 @@ def mutation_regulator_docs(hr, mutation, regulator):
     return jsonify(status='ok', total=total, data=result)
 
 
+@app.route('/mutation_regulator_search/<hr>/<search_term>', methods=['POST'])
+def mutation_regulator_search(hr, search_term):
+    pmids = datasets.search_mutation_regulator(all_datasets, hr, search_term)
+    result, total = __make_search_results(pmids, search_term)
+    return jsonify(status='ok', total=total, data=result)
+
+
 @app.route('/mutation_drug_docs/<hr>/<mutation>/<drug>', methods=['POST'])
 def mutation_drug_docs(hr, mutation, drug):
     pmids = datasets.mutation_drug(all_datasets, hr, mutation, drug)
@@ -690,6 +749,13 @@ def mutation_drug_docs(hr, mutation, drug):
         entry['abstract'] = markup_assocs(entry['abstract'], assocs)
     return jsonify(status='ok', total=total, data=result)
 
+
+
+@app.route('/mutation_drug_search/<hr>/<search_term>', methods=['POST'])
+def mutation_drug_search(hr, search_term):
+    pmids = datasets.search_mutation_drug(all_datasets, hr, search_term)
+    result, total = __make_search_results(pmids, search_term)
+    return jsonify(status='ok', total=total, data=result)
 
 
 if __name__ == '__main__':
