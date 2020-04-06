@@ -43,7 +43,7 @@ def dbconn():
 def bicluster_info(cluster_id):
     """all genes in the specified bicluster"""
     conn = dbconn()
-    cursor = conn.cursor()
+    cursor = conn.cursor(buffered=True)
     try:
         cursor.execute('select cox_hazard_ratio from biclusters where name=%s', [cluster_id])
         hazard_ratio = cursor.fetchone()[0]
@@ -69,6 +69,8 @@ def bicluster_info(cluster_id):
                        mutations_tfs=mutations_tfs,
                        tfs_bc=tfs_bc, genes=genes,
                        num_causal_flows=1)
+    except:
+        traceback.print_exc()
     finally:
         cursor.close()
         conn.close()
