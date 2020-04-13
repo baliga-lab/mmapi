@@ -292,15 +292,17 @@ def bicluster_network(cluster_id):
         edge_count = 0
         # retrieve the mutation and transcription factor nodes/edges
         # transcription factor -> bicluster
-        cursor.execute('select tfs.name,role from biclusters bc join bc_tf bt on bc.id=bt.bicluster_id join tfs on tfs.id=bt.tf_id where bc.name=%s', [cluster_id])
-        for tf, role in cursor.fetchall():
+        cursor.execute('select tfs.name,g.preferred,role from biclusters bc join bc_tf bt on bc.id=bt.bicluster_id join tfs on tfs.id=bt.tf_id join genes g on tfs.name=g.ensembl_id where bc.name=%s', [cluster_id])
+        for tf, tf_preferred, role in cursor.fetchall():
+            tf = tf_preferred if tf_preferred is not None else tf
             elements.append({"data": {"id": tf}, "classes": "tf"})
             elements.append({"data": {"id": str(edge_count), "source": tf, "target": cluster_id, "role": TF_BC_ROLES[role]}})
             edge_count += 1
 
         # mutation role -> transcription factors
-        cursor.execute('select m.name,tfs.name,role from biclusters bc join bc_mutation_tf bmt on bc.id=bmt.bicluster_id join mutations m on m.id=bmt.mutation_id join tfs on tfs.id=bmt.tf_id where bc.name=%s', [cluster_id])
-        for mutation, tf, role in cursor.fetchall():
+        cursor.execute('select m.name,tfs.name,g.preferred,role from biclusters bc join bc_mutation_tf bmt on bc.id=bmt.bicluster_id join mutations m on m.id=bmt.mutation_id join tfs on tfs.id=bmt.tf_id join genes g on tfs.name=g.ensembl_id where bc.name=%s', [cluster_id])
+        for mutation, tf, tf_preferred, role in cursor.fetchall():
+            tf = tf_preferred if tf_preferred is not None else tf
             elements.append({"data": {"id": mutation}, "classes": "mutation"})
             elements.append({"data": {"id": str(edge_count), "source": mutation, "target": tf, "role": MUTATION_TF_ROLES[role] }})
             edge_count += 1
