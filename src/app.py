@@ -49,12 +49,12 @@ def bicluster_info(cluster_id):
         hazard_ratio = cursor.fetchone()[0]
 
         # mutation role -> transcription factors
-        cursor.execute('select m.name,tfs.name,g.preferred,role from biclusters bc join bc_mutation_tf bmt on bc.id=bmt.bicluster_id join mutations m on m.id=bmt.mutation_id join tfs on tfs.id=bmt.tf_id join genes g on tfs.name=g.ensembl_id where bc.name=%s', [cluster_id])
+        cursor.execute('select m.name,tfs.name,g.preferred,role from biclusters bc join bc_mutation_tf bmt on bc.id=bmt.bicluster_id join mutations m on m.id=bmt.mutation_id join tfs on tfs.id=bmt.tf_id left join genes g on tfs.name=g.ensembl_id where bc.name=%s', [cluster_id])
         mutations_tfs = [{"mutation": mutation, "tf": tf, "tf_preferred": tf_preferred if tf_preferred is not None else tf, "role": MUTATION_TF_ROLES[role]}
                          for mutation, tf, tf_preferred, role in cursor.fetchall()]
 
         # transcription factor -> bicluster
-        cursor.execute('select tfs.name,g.preferred,role,tfs.cox_hazard_ratio from biclusters bc join bc_tf bt on bc.id=bt.bicluster_id join tfs on tfs.id=bt.tf_id join genes g on tfs.name=g.ensembl_id  where bc.name=%s', [cluster_id])
+        cursor.execute('select tfs.name,g.preferred,role,tfs.cox_hazard_ratio from biclusters bc join bc_tf bt on bc.id=bt.bicluster_id join tfs on tfs.id=bt.tf_id left join genes g on tfs.name=g.ensembl_id  where bc.name=%s', [cluster_id])
         tfs_bc = [{"tf": tf, "tf_preferred": tf_preferred if tf_preferred is not None else tf, "role": TF_BC_ROLES[role], "hazard_ratio": tf_hazard_ratio}
                   for tf, tf_preferred, role, tf_hazard_ratio in cursor.fetchall()]
 
@@ -156,7 +156,7 @@ def mutation(mutation_name):
     conn = dbconn()
     cursor = conn.cursor()
     try:
-        cursor.execute('select tfs.name,g.preferred,bc.name,bmt.role,bc.cox_hazard_ratio from bc_mutation_tf bmt join biclusters bc on bmt.bicluster_id=bc.id join mutations m on m.id=bmt.mutation_id join tfs on tfs.id=bmt.tf_id join genes g on tfs.name=g.ensembl_id where m.name=%s',
+        cursor.execute('select tfs.name,g.preferred,bc.name,bmt.role,bc.cox_hazard_ratio from bc_mutation_tf bmt join biclusters bc on bmt.bicluster_id=bc.id join mutations m on m.id=bmt.mutation_id join tfs on tfs.id=bmt.tf_id left join genes g on tfs.name=g.ensembl_id where m.name=%s',
                        [mutation_name])
         result = [{"regulator": tf, "regulator_preferred": tf_preferred if tf_preferred is not None else tf, "bicluster": bc,
                    "role": MUTATION_TF_ROLES[role],
@@ -292,7 +292,7 @@ def bicluster_network(cluster_id):
         edge_count = 0
         # retrieve the mutation and transcription factor nodes/edges
         # transcription factor -> bicluster
-        cursor.execute('select tfs.name,g.preferred,role from biclusters bc join bc_tf bt on bc.id=bt.bicluster_id join tfs on tfs.id=bt.tf_id join genes g on tfs.name=g.ensembl_id where bc.name=%s', [cluster_id])
+        cursor.execute('select tfs.name,g.preferred,role from biclusters bc join bc_tf bt on bc.id=bt.bicluster_id join tfs on tfs.id=bt.tf_id left join genes g on tfs.name=g.ensembl_id where bc.name=%s', [cluster_id])
         for tf, tf_preferred, role in cursor.fetchall():
             tf = tf_preferred if tf_preferred is not None else tf
             elements.append({"data": {"id": tf}, "classes": "tf"})
@@ -300,7 +300,7 @@ def bicluster_network(cluster_id):
             edge_count += 1
 
         # mutation role -> transcription factors
-        cursor.execute('select m.name,tfs.name,g.preferred,role from biclusters bc join bc_mutation_tf bmt on bc.id=bmt.bicluster_id join mutations m on m.id=bmt.mutation_id join tfs on tfs.id=bmt.tf_id join genes g on tfs.name=g.ensembl_id where bc.name=%s', [cluster_id])
+        cursor.execute('select m.name,tfs.name,g.preferred,role from biclusters bc join bc_mutation_tf bmt on bc.id=bmt.bicluster_id join mutations m on m.id=bmt.mutation_id join tfs on tfs.id=bmt.tf_id left join genes g on tfs.name=g.ensembl_id where bc.name=%s', [cluster_id])
         for mutation, tf, tf_preferred, role in cursor.fetchall():
             tf = tf_preferred if tf_preferred is not None else tf
             elements.append({"data": {"id": mutation}, "classes": "mutation"})
