@@ -49,14 +49,14 @@ def bicluster_info(cluster_id):
         hazard_ratio = cursor.fetchone()[0]
 
         # mutation role -> transcription factors
-        cursor.execute('select m.name,tfs.name,role from biclusters bc join bc_mutation_tf bmt on bc.id=bmt.bicluster_id join mutations m on m.id=bmt.mutation_id join tfs on tfs.id=bmt.tf_id where bc.name=%s', [cluster_id])
-        mutations_tfs = [{"mutation": mutation, "tf": tf, "role": MUTATION_TF_ROLES[role]}
-                         for mutation, tf, role in cursor.fetchall()]
+        cursor.execute('select m.name,tfs.name,g.preferred,role from biclusters bc join bc_mutation_tf bmt on bc.id=bmt.bicluster_id join mutations m on m.id=bmt.mutation_id join tfs on tfs.id=bmt.tf_id join genes g on tfs.name=g.ensembl_id where bc.name=%s', [cluster_id])
+        mutations_tfs = [{"mutation": mutation, "tf": tf, "tf_preferred": tf_preferred if tf_preferred is not None else tf, "role": MUTATION_TF_ROLES[role]}
+                         for mutation, tf, tf_preferred, role in cursor.fetchall()]
 
         # transcription factor -> bicluster
-        cursor.execute('select tfs.name,role,tfs.cox_hazard_ratio from biclusters bc join bc_tf bt on bc.id=bt.bicluster_id join tfs on tfs.id=bt.tf_id where bc.name=%s', [cluster_id])
-        tfs_bc = [{"tf": tf, "role": TF_BC_ROLES[role], "hazard_ratio": tf_hazard_ratio}
-                  for tf, role, tf_hazard_ratio in cursor.fetchall()]
+        cursor.execute('select tfs.name,g.preferred,role,tfs.cox_hazard_ratio from biclusters bc join bc_tf bt on bc.id=bt.bicluster_id join tfs on tfs.id=bt.tf_id join genes g on tfs.name=g.ensembl_id  where bc.name=%s', [cluster_id])
+        tfs_bc = [{"tf": tf, "tf_preferred": tf_preferred if tf_preferred is not None else tf, "role": TF_BC_ROLES[role], "hazard_ratio": tf_hazard_ratio}
+                  for tf, tf_preferred, role, tf_hazard_ratio in cursor.fetchall()]
 
         # bicluster genes
         cursor.execute('select g.preferred from biclusters bc join bicluster_genes bcg on bc.id=bcg.bicluster_id join genes g on g.id=bcg.gene_id where bc.name=%s', [cluster_id])
@@ -156,12 +156,12 @@ def mutation(mutation_name):
     conn = dbconn()
     cursor = conn.cursor()
     try:
-        cursor.execute('select tfs.name,bc.name,bmt.role,bc.cox_hazard_ratio from bc_mutation_tf bmt join biclusters bc on bmt.bicluster_id=bc.id join mutations m on m.id=bmt.mutation_id join tfs on tfs.id=bmt.tf_id where m.name=%s',
+        cursor.execute('select tfs.name,g.preferred,bc.name,bmt.role,bc.cox_hazard_ratio from bc_mutation_tf bmt join biclusters bc on bmt.bicluster_id=bc.id join mutations m on m.id=bmt.mutation_id join tfs on tfs.id=bmt.tf_id join genes g on tfs.name=g.ensembl_id where m.name=%s',
                        [mutation_name])
-        result = [{"regulator": tf, "bicluster": bc,
+        result = [{"regulator": tf, "regulator_preferred": tf_preferred if tf_preferred is not None else tf, "bicluster": bc,
                    "role": MUTATION_TF_ROLES[role],
                    "bc_cox_hazard_ratio": bc_cox_hazard_ratio}
-                  for tf, bc, role,bc_cox_hazard_ratio in cursor.fetchall()]
+                  for tf, tf_preferred, bc, role,bc_cox_hazard_ratio in cursor.fetchall()]
         return jsonify(mutation=mutation_name, entries=result)
     finally:
         cursor.close()
@@ -182,7 +182,14 @@ def regulator(tf_name):
                    "hazard_ratio": bc_hazard_ratio,
                    "mutation": mut}
                   for bc, role, bc_hazard_ratio, mut in cursor.fetchall()]
-        return jsonify(regulator=tf_name, hazard_ratio=hazard_ratio, entries=result)
+        cursor.execute('select preferred from genes where ensembl_id=%s', [tf_name])
+        row = cursor.fetchone()
+        if row is not None:
+            reg_preferred = row[0]
+        else:
+            reg_preferred = tf_name
+        return jsonify(regulator=tf_name, regulator_preferred=reg_preferred,
+                       hazard_ratio=hazard_ratio, entries=result)
     finally:
         cursor.close()
         conn.close()
