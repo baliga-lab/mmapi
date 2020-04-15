@@ -297,8 +297,8 @@ def bicluster_network(cluster_id):
             tf = tf_preferred if tf_preferred is not None else tf
             elements.append({"data": {"id": tf}, "classes": "tf"})
             elements.append({"data": {"id": str(edge_count), "source": tf, "target": cluster_id,
-                                      "role": TF_BC_ROLES[role],
-                                      "classes": TF_BC_ROLES[role]}})
+                                      "role": TF_BC_ROLES[role]},
+                                      "classes": TF_BC_ROLES[role]})
             edge_count += 1
 
         # mutation role -> transcription factors
