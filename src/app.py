@@ -296,8 +296,7 @@ def bicluster_network(cluster_id):
         for tf, tf_preferred, role in cursor.fetchall():
             tf = tf_preferred if tf_preferred is not None else tf
             elements.append({"data": {"id": tf}, "classes": "tf"})
-            elements.append({"data": {"id": str(edge_count), "source": tf, "target": cluster_id,
-                                      "role": TF_BC_ROLES[role]},
+            elements.append({"data": {"id": str(edge_count), "source": tf, "target": cluster_id},
                                       "classes": TF_BC_ROLES[role]})
             edge_count += 1
 
@@ -306,7 +305,8 @@ def bicluster_network(cluster_id):
         for mutation, tf, tf_preferred, role in cursor.fetchall():
             tf = tf_preferred if tf_preferred is not None else tf
             elements.append({"data": {"id": mutation}, "classes": "mutation"})
-            elements.append({"data": {"id": str(edge_count), "source": mutation, "target": tf, "role": MUTATION_TF_ROLES[role] }})
+            elements.append({"data": {"id": str(edge_count), "source": mutation, "target": tf},
+                                      "classes": MUTATION_TF_ROLES[role].replace('-', '_') })
             edge_count += 1
 
 
