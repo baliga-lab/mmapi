@@ -45,12 +45,14 @@ def bicluster_info(cluster_id):
     conn = dbconn()
     cursor = conn.cursor(buffered=True)
     try:
-        cursor.execute('select cox_hazard_ratio from biclusters where name=%s', [cluster_id])
-        hazard_ratio = cursor.fetchone()[0]
+        cursor.execute('select cox_hazard_ratio,trans_program from biclusters where name=%s', [cluster_id])
+        hazard_ratio, trans_program = cursor.fetchone()
 
         # mutation role -> transcription factors
         cursor.execute('select m.name,tfs.name,g.preferred,role from biclusters bc join bc_mutation_tf bmt on bc.id=bmt.bicluster_id join mutations m on m.id=bmt.mutation_id join tfs on tfs.id=bmt.tf_id left join genes g on tfs.name=g.ensembl_id where bc.name=%s', [cluster_id])
-        mutations_tfs = [{"mutation": mutation, "tf": tf, "tf_preferred": tf_preferred if tf_preferred is not None else tf, "role": MUTATION_TF_ROLES[role]}
+        mutations_tfs = [{"mutation": mutation,
+                          "tf": tf, "tf_preferred": tf_preferred if tf_preferred is not None else tf,
+                          "role": MUTATION_TF_ROLES[role]}
                          for mutation, tf, tf_preferred, role in cursor.fetchall()]
 
         # transcription factor -> bicluster
@@ -62,12 +64,37 @@ def bicluster_info(cluster_id):
         cursor.execute('select g.preferred from biclusters bc join bicluster_genes bcg on bc.id=bcg.bicluster_id join genes g on g.id=bcg.gene_id where bc.name=%s', [cluster_id])
         genes = [row[0] for row in cursor.fetchall()]
 
+        # regulon drugs
+        cursor.execute('select d.name from biclusters bc join regulon_drugs rd on rd.regulon_id=bc.id join drugs d on rd.drug_id=d.id where bc.name=%s',
+                       [cluster_id])
+        drugs = [row[0] for row in cursor.fetchall()]
+
+        # mechanism of action
+        cursor.execute('select m.name from biclusters bc join regulon_mechanism_of_action rm on rm.regulon_id=bc.id join mechanisms_of_action m on rm.mechanism_of_action_id=m.id where bc.name=%s',
+                       [cluster_id])
+        moas = [row[0] for row in cursor.fetchall()]
+
+        # hallmarks
+        cursor.execute('select h.name from biclusters bc join regulon_hallmarks rh on rh.regulon_id=bc.id join hallmarks h on rh.hallmark_id=h.id where bc.name=%s',
+                       [cluster_id])
+        hallmarks = [row[0] for row in cursor.fetchall()]
+
+        # target classes
+        cursor.execute('select tc.name,rtc.pval from biclusters bc join regulon_target_class rtc on rtc.regulon_id=bc.id join target_classes tc on rtc.target_class_id=tc.id where bc.name=%s',
+                       [cluster_id])
+        target_classes = [{'name': name, 'pval': pval} for name, pval in cursor.fetchall()]
+
         # TODO: number of causal flows, which is the number of entries in the
         # causal flow table
-        return jsonify(cluster=cluster_id,
+        return jsonify(cluster=cluster_id, trans_program=trans_program,
                        hazard_ratio=hazard_ratio,
                        mutations_tfs=mutations_tfs,
-                       tfs_bc=tfs_bc, genes=genes,
+                       tfs_bc=tfs_bc,
+                       genes=genes,
+                       drugs=drugs,
+                       mechanism_of_action=moas,
+                       hallmarks=hallmarks,
+                       target_classes=target_classes,
                        num_causal_flows=1)
     except:
         traceback.print_exc()
