@@ -49,12 +49,20 @@ def bicluster_info(cluster_id):
         hazard_ratio, trans_program = cursor.fetchone()
 
         # mutation role -> transcription factors
+        """
         cursor.execute('select m.name,tfs.name,g.preferred,role from biclusters bc join bc_mutation_tf bmt on bc.id=bmt.bicluster_id join mutations m on m.id=bmt.mutation_id join tfs on tfs.id=bmt.tf_id left join genes g on tfs.name=g.ensembl_id where bc.name=%s', [cluster_id])
         mutations_tfs = [{"mutation": mutation,
                           "tf": tf, "tf_preferred": tf_preferred if tf_preferred is not None else tf,
                           "role": MUTATION_TF_ROLES[role]}
-                         for mutation, tf, tf_preferred, role in cursor.fetchall()]
-
+                         for mutation, tf, tf_preferred, role in cursor.fetchall()]"""
+        cursor.execute('select mut.name as mutation,tfs.name as regulator,g.preferred as reg_preferred,bmt.role as mutation_role,bc_tf.role as regulator_role,bc.cox_hazard_ratio from bc_mutation_tf bmt join biclusters bc on bmt.bicluster_id=bc.id join mutations mut on bmt.mutation_id=mut.id join tfs on bmt.tf_id=tfs.id join bc_tf on bc.id=bc_tf.bicluster_id and tfs.id=bc_tf.tf_id left join genes g on g.ensembl_id=tfs.name where bc.name=%s',
+                       [cluster_id])
+        mutations_tfs = [{"mutation": mutation,
+                          "tf": tf, "tf_preferred": tf_preferred if tf_preferred is not None else tf,
+                          "mutation_role": MUTATION_TF_ROLES[mut_role],
+                          'regulator_role': TF_BC_ROLES[bc_role],
+                          'hazard_ratio': hazard_ratio}
+                         for mutation, tf, tf_preferred, mut_role, bc_role, hazard_ratio in cursor.fetchall()]
         # transcription factor -> bicluster
         cursor.execute('select tfs.name,g.preferred,role,tfs.cox_hazard_ratio from biclusters bc join bc_tf bt on bc.id=bt.bicluster_id join tfs on tfs.id=bt.tf_id left join genes g on tfs.name=g.ensembl_id  where bc.name=%s', [cluster_id])
         tfs_bc = [{"tf": tf, "tf_preferred": tf_preferred if tf_preferred is not None else tf, "role": TF_BC_ROLES[role], "hazard_ratio": tf_hazard_ratio}
