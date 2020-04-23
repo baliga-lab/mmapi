@@ -55,7 +55,7 @@ def bicluster_info(cluster_id):
                           "tf": tf, "tf_preferred": tf_preferred if tf_preferred is not None else tf,
                           "role": MUTATION_TF_ROLES[role]}
                          for mutation, tf, tf_preferred, role in cursor.fetchall()]"""
-        cursor.execute('select mut.name as mutation,tfs.name as regulator,g.preferred as reg_preferred,bmt.role as mutation_role,bc_tf.role as regulator_role,bc.cox_hazard_ratio from bc_mutation_tf bmt join biclusters bc on bmt.bicluster_id=bc.id join mutations mut on bmt.mutation_id=mut.id join tfs on bmt.tf_id=tfs.id join bc_tf on bc.id=bc_tf.bicluster_id and tfs.id=bc_tf.tf_id left join genes g on g.ensembl_id=tfs.name where bc.name=%s',
+        cursor.execute('select mut.name as mutation,tfs.name as regulator,g.preferred as reg_preferred,bmt.role as mutation_role,bc_tf.role as regulator_role,tfs.cox_hazard_ratio from bc_mutation_tf bmt join biclusters bc on bmt.bicluster_id=bc.id join mutations mut on bmt.mutation_id=mut.id join tfs on bmt.tf_id=tfs.id join bc_tf on bc.id=bc_tf.bicluster_id and tfs.id=bc_tf.tf_id left join genes g on g.ensembl_id=tfs.name where bc.name=%s',
                        [cluster_id])
         mutations_tfs = [{"mutation": mutation,
                           "tf": tf, "tf_preferred": tf_preferred if tf_preferred is not None else tf,
