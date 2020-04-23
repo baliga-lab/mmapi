@@ -84,8 +84,6 @@ def bicluster_info(cluster_id):
                        [cluster_id])
         target_classes = [{'name': name, 'pval': pval} for name, pval in cursor.fetchall()]
 
-        # TODO: number of causal flows, which is the number of entries in the
-        # causal flow table
         return jsonify(cluster=cluster_id, trans_program=trans_program,
                        hazard_ratio=hazard_ratio,
                        mutations_tfs=mutations_tfs,
@@ -95,7 +93,7 @@ def bicluster_info(cluster_id):
                        mechanism_of_action=moas,
                        hallmarks=hallmarks,
                        target_classes=target_classes,
-                       num_causal_flows=1)
+                       num_causal_flows=len(mutations_tfs))
     except:
         traceback.print_exc()
     finally:
