@@ -419,7 +419,7 @@ def causal_flow():
             'bicluster': bc,
             'mutation': mut,
             'regulator': tf,
-            'regulator_preferred': tf_preferred,
+            'regulator_preferred': tf_preferred if tf_preferred is not None else tf,
             'mutation_role': MUTATION_ROLES[mut_role],
             'regulator_role': REGULATOR_ROLES[tf_role],
             'hazard_ratio': hratio,
