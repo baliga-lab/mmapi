@@ -179,9 +179,39 @@ def causal_flow_search(term):
             'hazard_ratio': hratio,
             'num_genes': ngenes
         } for bc,mut,tf,tf_preferred,mut_role,tf_role,hratio,ngenes in cursor.fetchall()]
-        return jsonify(by_mutation=by_mutation,
-                       by_regulator=by_regulator,
-                       by_reggenes=by_reggenes)
+
+        if len(by_mutation) == 0 and len(by_regulator) == 0 and len(by_reggenes) == 0:
+            return jsonify(found=='no')
+
+        return jsonify(found="yes",
+            by_mutation=by_mutation,
+            by_regulator=by_regulator,
+            by_reggenes=by_reggenes)
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@app.route('/api/v1.0.0/causal_flows_with_program/<program>')
+def causal_flows_with_program(program):
+    """retrieves all causal flows containing this program"""
+    conn = dbconn()
+    cursor = conn.cursor()
+    try:
+        # search causal flows by regulon genes
+        cursor.execute("""select bc.name,mut.name,tfs.name,g.preferred,bmt.role,bc_tf.role,bc.cox_hazard_ratio,bgg.num_genes from bc_mutation_tf bmt join biclusters bc on bmt.bicluster_id=bc.id join mutations mut on bmt.mutation_id=mut.id join tfs on bmt.tf_id=tfs.id join bc_tf on bc.id=bc_tf.bicluster_id and tfs.id=bc_tf.tf_id join (select bc.id,count(bg.gene_id) as num_genes from biclusters bc join bicluster_genes bg on bc.id=bg.bicluster_id group by bc.id) as bgg on bc.id=bgg.id left join genes g on g.ensembl_id=tfs.name where bc.trans_program=%s""", [program])
+        result = [{
+            'bicluster': bc,
+            'mutation': mut,
+            'regulator': tf,
+            'regulator_preferred': tf_preferred if tf_preferred is not None else tf,
+            'mutation_role': MUTATION_ROLES[mut_role],
+            'regulator_role': REGULATOR_ROLES[tf_role],
+            'hazard_ratio': hratio,
+            'num_genes': ngenes
+        } for bc,mut,tf,tf_preferred,mut_role,tf_role,hratio,ngenes in cursor.fetchall()]
+
+        return jsonify(entries=result)
     finally:
         cursor.close()
         conn.close()
