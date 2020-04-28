@@ -139,6 +139,54 @@ def simple_search(term):
         cursor.close()
         conn.close()
 
+
+@app.route('/api/v1.0.0/cfsearch/<term>')
+def causal_flow_search(term):
+    """retrieves all causal flows related to the search term"""
+    conn = dbconn()
+    cursor = conn.cursor()
+    try:
+        # search causal flows by mutation or regulator
+        cursor.execute("""select bc.name,mut.name,tfs.name,g.preferred,bmt.role,bc_tf.role,bc.cox_hazard_ratio,bgg.num_genes from bc_mutation_tf bmt join biclusters bc on bmt.bicluster_id=bc.id join mutations mut on bmt.mutation_id=mut.id join tfs on bmt.tf_id=tfs.id join bc_tf on bc.id=bc_tf.bicluster_id and tfs.id=bc_tf.tf_id join (select bc.id,count(bg.gene_id) as num_genes from biclusters bc join bicluster_genes bg on bc.id=bg.bicluster_id group by bc.id) as bgg on bc.id=bgg.id left join genes g on g.ensembl_id=tfs.name where g.preferred=%s or mut.name=%s""", [term, term])
+        by_mutation = []
+        by_regulator = []
+        for bc,mut,tf,tf_preferred,mut_role,tf_role,hratio,ngenes in cursor.fetchall():
+            entry = {
+                'bicluster': bc,
+                'mutation': mut,
+                'regulator': tf,
+                'regulator_preferred': tf_preferred if tf_preferred is not None else tf,
+                'mutation_role': MUTATION_ROLES[mut_role],
+                'regulator_role': REGULATOR_ROLES[tf_role],
+                'hazard_ratio': hratio,
+                'num_genes': ngenes
+            }
+            if tf_preferred == term:
+                by_regulator.append(entry)
+
+            if mut == term:
+                by_mutation.append(entry)
+
+        # search causal flows by regulon genes
+        cursor.execute("""select bc.name,mut.name,tfs.name,g.preferred,bmt.role,bc_tf.role,bc.cox_hazard_ratio,bgg.num_genes from bc_mutation_tf bmt join biclusters bc on bmt.bicluster_id=bc.id join mutations mut on bmt.mutation_id=mut.id join tfs on bmt.tf_id=tfs.id join bc_tf on bc.id=bc_tf.bicluster_id and tfs.id=bc_tf.tf_id join (select bc.id,count(bg.gene_id) as num_genes from biclusters bc join bicluster_genes bg on bc.id=bg.bicluster_id group by bc.id) as bgg on bc.id=bgg.id left join genes g on g.ensembl_id=tfs.name where bc.id in (select bicluster_id from bicluster_genes bg join genes g on bg.gene_id=g.id where g.preferred=%s)""", [term])
+        by_reggenes = [{
+            'bicluster': bc,
+            'mutation': mut,
+            'regulator': tf,
+            'regulator_preferred': tf_preferred if tf_preferred is not None else tf,
+            'mutation_role': MUTATION_ROLES[mut_role],
+            'regulator_role': REGULATOR_ROLES[tf_role],
+            'hazard_ratio': hratio,
+            'num_genes': ngenes
+        } for bc,mut,tf,tf_preferred,mut_role,tf_role,hratio,ngenes in cursor.fetchall()]
+        return jsonify(by_mutation=by_mutation,
+                       by_regulator=by_regulator,
+                       by_reggenes=by_reggenes)
+    finally:
+        cursor.close()
+        conn.close()
+
+
 @app.route('/api/v1.0.0/completions/<term>')
 def completions(term):
     """this is a function to serve the jquery autocomplete box"""
