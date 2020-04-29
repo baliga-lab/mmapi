@@ -324,11 +324,14 @@ def summary():
         num_patients = cursor.fetchone()[0]
         cursor.execute('select count(*) from bc_mutation_tf bmt join biclusters bc on bmt.bicluster_id=bc.id join mutations mut on bmt.mutation_id=mut.id join tfs on bmt.tf_id=tfs.id join bc_tf on bc.id=bc_tf.bicluster_id and tfs.id=bc_tf.tf_id left join genes g on g.ensembl_id=tfs.name')
         num_causal_flows = cursor.fetchone()[0]
+        cursor.execute('select count(distinct trans_program) from biclusters')
+        num_trans_programs = cursor.fetchone()[0]
         return jsonify(num_biclusters=num_biclusters,
                        num_regulators=num_regulators,
                        num_mutations=num_mutations,
                        num_patients=num_patients,
-                       num_causal_flows=num_causal_flows)
+                       num_causal_flows=num_causal_flows,
+                       num_trans_programs=num_trans_programs)
     finally:
         cursor.close()
         conn.close()
