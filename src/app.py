@@ -183,7 +183,7 @@ def causal_flow_search(term):
         } for bc,mut,tf,tf_preferred,mut_role,tf_role,hratio,ngenes,trans_program in cursor.fetchall()]
 
         if len(by_mutation) == 0 and len(by_regulator) == 0 and len(by_reggenes) == 0:
-            return jsonify(found=='no')
+            return jsonify(found='no')
 
         return jsonify(found="yes",
             by_mutation=by_mutation,
