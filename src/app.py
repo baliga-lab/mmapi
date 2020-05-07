@@ -145,9 +145,41 @@ def causal_flow_search(term):
     """retrieves all causal flows related to the search term"""
     conn = dbconn()
     cursor = conn.cursor()
+    mut_aliases = {
+        't(4;14)': ['NDS2', 'WHSC1'],
+        't(11;14)': ['CCND1'],
+        't(14;16)': ['MAF'],
+        't(8;14)': ['MYC'],
+
+        'NDS2': ['t(4;14)', 'WHSC1'],
+        'CCND1': ['t(11;14)'],
+        'MAF': ['t(14;16)'],
+        'MYC': ['t(8;14)'],
+
+        'WHSC1': ['t(4;14)', 'NDS2']
+    }
     try:
         # search causal flows by mutation or regulator
-        cursor.execute("""select bc.name,mut.name,tfs.name,g.preferred,bmt.role,bc_tf.role,bc.cox_hazard_ratio,bgg.num_genes,bc.trans_program from bc_mutation_tf bmt join biclusters bc on bmt.bicluster_id=bc.id join mutations mut on bmt.mutation_id=mut.id join tfs on bmt.tf_id=tfs.id join bc_tf on bc.id=bc_tf.bicluster_id and tfs.id=bc_tf.tf_id join (select bc.id,count(bg.gene_id) as num_genes from biclusters bc join bicluster_genes bg on bc.id=bg.bicluster_id group by bc.id) as bgg on bc.id=bgg.id left join genes g on g.ensembl_id=tfs.name where g.preferred=%s or mut.name=%s""", [term, term])
+        q = "select bc.name,mut.name,tfs.name,g.preferred,bmt.role,bc_tf.role,bc.cox_hazard_ratio,bgg.num_genes,bc.trans_program from bc_mutation_tf bmt join biclusters bc on bmt.bicluster_id=bc.id join mutations mut on bmt.mutation_id=mut.id join tfs on bmt.tf_id=tfs.id join bc_tf on bc.id=bc_tf.bicluster_id and tfs.id=bc_tf.tf_id join (select bc.id,count(bg.gene_id) as num_genes from biclusters bc join bicluster_genes bg on bc.id=bg.bicluster_id group by bc.id) as bgg on bc.id=bgg.id left join genes g on g.ensembl_id=tfs.name where "
+
+        reg_params = [term]
+        regulator_match_clause = " g.preferred=%s"
+        if term in mut_aliases:
+            for alias in mut_aliases[term]:
+                regulator_match_clause += " or g.preferred=%s"
+                reg_params.append(alias)
+        q += regulator_match_clause
+
+        mut_params = [term]
+        mutation_match_clause = " or mut.name=%s"
+        if term in mut_aliases:
+            for alias in mut_aliases[term]:
+                mutation_match_clause += " or mut.name=%s"
+                mut_params.append(alias)
+        q += mutation_match_clause
+        print(q)
+        cursor.execute(q, reg_params + mut_params)
+
         by_mutation = []
         by_regulator = []
         for bc,mut,tf,tf_preferred,mut_role,tf_role,hratio,ngenes,trans_program in cursor.fetchall():
@@ -169,7 +201,19 @@ def causal_flow_search(term):
                 by_mutation.append(entry)
 
         # search causal flows by regulon genes
-        cursor.execute("""select bc.name,mut.name,tfs.name,g.preferred,bmt.role,bc_tf.role,bc.cox_hazard_ratio,bgg.num_genes,bc.trans_program from bc_mutation_tf bmt join biclusters bc on bmt.bicluster_id=bc.id join mutations mut on bmt.mutation_id=mut.id join tfs on bmt.tf_id=tfs.id join bc_tf on bc.id=bc_tf.bicluster_id and tfs.id=bc_tf.tf_id join (select bc.id,count(bg.gene_id) as num_genes from biclusters bc join bicluster_genes bg on bc.id=bg.bicluster_id group by bc.id) as bgg on bc.id=bgg.id left join genes g on g.ensembl_id=tfs.name where bc.id in (select bicluster_id from bicluster_genes bg join genes g on bg.gene_id=g.id where g.preferred=%s)""", [term])
+        q = "select bc.name,mut.name,tfs.name,g.preferred,bmt.role,bc_tf.role,bc.cox_hazard_ratio,bgg.num_genes,bc.trans_program from bc_mutation_tf bmt join biclusters bc on bmt.bicluster_id=bc.id join mutations mut on bmt.mutation_id=mut.id join tfs on bmt.tf_id=tfs.id join bc_tf on bc.id=bc_tf.bicluster_id and tfs.id=bc_tf.tf_id join (select bc.id,count(bg.gene_id) as num_genes from biclusters bc join bicluster_genes bg on bc.id=bg.bicluster_id group by bc.id) as bgg on bc.id=bgg.id left join genes g on g.ensembl_id=tfs.name where bc.id in (select bicluster_id from bicluster_genes bg join genes g on bg.gene_id=g.id where"
+
+        match_params = [term]
+        match_clause = " g.preferred=%s"
+        if term in mut_aliases:
+            for alias in mut_aliases[term]:
+                match_clause += " or g.preferred=%s"
+                match_params.append(alias)
+
+        q += match_clause
+        q += ")"
+        #print(q)
+        cursor.execute(q, match_params)
         by_reggenes = [{
             'bicluster': bc,
             'mutation': mut,
