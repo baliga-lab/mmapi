@@ -183,8 +183,10 @@ def causal_flow_search(term):
                 mutation_match_clause += " or mut.name=%s"
                 mut_params.append(alias)
         q += mutation_match_clause
-        print(q)
-        cursor.execute(q, reg_params + mut_params)
+        #print(q)
+        qargs = reg_params + mut_params
+        #print(qargs)
+        cursor.execute(q, qargs)
 
         by_mutation = []
         by_regulator = []
@@ -200,10 +202,10 @@ def causal_flow_search(term):
                 'num_genes': ngenes,
                 'trans_program': trans_program
             }
-            if tf_preferred == term:
+            if tf_preferred == term or term in mut_aliases and tf_preferred in mut_aliases[term]:
                 by_regulator.append(entry)
 
-            if mut == term:
+            if mut == term or term in mut_aliases and mut in mut_aliases[term]:
                 by_mutation.append(entry)
 
         # search causal flows by regulon genes
