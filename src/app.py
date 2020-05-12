@@ -87,6 +87,12 @@ def bicluster_info(cluster_id):
                        [cluster_id])
         hallmarks = [row[0] for row in cursor.fetchall()]
 
+        # Lin hallmarks
+        cursor.execute('select h.name from biclusters bc join regulon_lin_hallmarks rh on rh.regulon_id=bc.id join lin_hallmarks h on rh.hallmark_id=h.id where bc.name=%s',
+                       [cluster_id])
+        lin_hallmarks = [row[0] for row in cursor.fetchall()]
+
+
         # target classes
         cursor.execute('select tc.name,rtc.pval from biclusters bc join regulon_target_class rtc on rtc.regulon_id=bc.id join target_classes tc on rtc.target_class_id=tc.id where bc.name=%s',
                        [cluster_id])
@@ -99,7 +105,7 @@ def bicluster_info(cluster_id):
                        genes=genes,
                        drugs=drugs,
                        mechanism_of_action=moas,
-                       hallmarks=hallmarks,
+                       hallmarks=lin_hallmarks,      # lin hallmarks !!!
                        target_classes=target_classes,
                        num_causal_flows=len(mutations_tfs))
     except:
