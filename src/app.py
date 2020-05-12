@@ -146,17 +146,17 @@ def causal_flow_search(term):
     conn = dbconn()
     cursor = conn.cursor()
     mut_aliases = {
-        't(4;14)': ['NDS2', 'WHSC1'],
+        't(4;14)': ['NSD2', 'WHSC1'],
         't(11;14)': ['CCND1'],
         't(14;16)': ['MAF'],
         't(8;14)': ['MYC'],
 
-        'NDS2': ['t(4;14)', 'WHSC1'],
+        'NSD2': ['t(4;14)', 'WHSC1'],
         'CCND1': ['t(11;14)'],
         'MAF': ['t(14;16)'],
         'MYC': ['t(8;14)'],
 
-        'WHSC1': ['t(4;14)', 'NDS2']
+        'WHSC1': ['t(4;14)', 'NSD2']
     }
     try:
         # search causal flows by mutation or regulator
