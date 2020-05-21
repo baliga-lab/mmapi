@@ -256,7 +256,7 @@ def cancer_mutation(all_datasets, hr, cancer, mutation):
     else:
         mutation_pmids.update(mm_mutation[mutation])
 
-    if cancer == 'All':
+    if cancer == 'All Cancers':
         for tmp_pmids in mm_cancer.values():
             cancer_pmids.update(tmp_pmids)
     else:
@@ -266,6 +266,8 @@ def cancer_mutation(all_datasets, hr, cancer, mutation):
 
 
 def disease_mutation(all_datasets, hr, disease, mutation):
+    cancer_pmids = cancer_mutation(all_datasets, hr, disease, mutation)
+
     mm_mutation = all_datasets[int(hr)]['mm_mutation']['mutation']
     mm_disease = all_datasets[int(hr)]['mm_mutation']['disease']
     disease_pmids = set()
@@ -276,14 +278,14 @@ def disease_mutation(all_datasets, hr, disease, mutation):
     else:
         mutation_pmids.update(mm_mutation[mutation])
 
-    if disease == 'All':
+    if disease == 'All myelomas':
         for tmp_pmids in mm_disease.values():
             disease_pmids.update(tmp_pmids)
     else:
         disease_pmids.update(mm_disease[disease])
 
     pmids = mutation_pmids.intersection(disease_pmids)
-    return list(pmids)
+    return list(pmids) + cancer_pmids
 
 
 def disease_regulator(all_datasets, hr, disease, regulator):

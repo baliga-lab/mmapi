@@ -676,14 +676,18 @@ def bicluster_patient_status(cluster_id):
 EXCELRA ACCESS FUNCTIONS
 """
 
+"""
 @app.route('/cancers')
 def cancers():
     return jsonify(status='ok', cancers=all_datasets['cancers'])
-
+"""
 
 @app.route('/diseases')
 def diseases():
-    return jsonify(status='ok', diseases=all_datasets['diseases'])
+    cancers = all_datasets['cancers']
+    diseases = all_datasets['diseases']
+    disease_cancers = set(cancers + diseases)
+    return jsonify(status='ok', diseases=sorted(disease_cancers))
 
 
 @app.route('/mutations')
@@ -704,10 +708,10 @@ def regulons():
 def drugs():
     return jsonify(status='ok', drugs=all_datasets['drugs'])
 
-@app.route('/pmid_counts/<hr>/<cancer>/<disease>/<mutation>/<regulator>/<regulon>/<drug>')
-def pmid_counts(hr, cancer, disease, mutation, regulator, regulon, drug):
+@app.route('/pmid_counts/<hr>/<disease>/<mutation>/<regulator>/<regulon>/<drug>')
+def pmid_counts(hr, disease, mutation, regulator, regulon, drug):
     return jsonify(status='ok',
-                   num_cancer_mutation_pmids=len(datasets.cancer_mutation(all_datasets, hr, cancer, mutation)),
+                   #num_cancer_mutation_pmids=len(datasets.cancer_mutation(all_datasets, hr, cancer, mutation)),
                    num_disease_mutation_pmids=len(datasets.disease_mutation(all_datasets, hr, disease, mutation)),
                    num_disease_regulator_pmids=len(datasets.disease_regulator(all_datasets, hr, disease, regulator)),
                    num_disease_regulon_pmids=len(datasets.disease_regulon(all_datasets, hr, disease, regulon)),
