@@ -31,9 +31,6 @@ MUTATION_TF_ROLES = { 1: 'down-regulates', 2: 'up-regulates'}
 TF_BC_ROLES = { 1: 'activates', 2: 'represses' }
 
 
-all_datasets = datasets.read_all_datasets(app.config['EXCELRA_DATASETS'])
-
-
 def dbconn():
     return mysql.connector.connect(user=app.config['DATABASE_USER'],
                                    password=app.config['DATABASE_PASSWORD'],
@@ -744,16 +741,17 @@ def pmid_counts(hr, disease, mutation, regulator, regulon, drug):
 
 @app.route('/search_pmid_counts/<hr>', methods=['POST'])
 def search_pmid_counts(hr):
+    conn = dbconn()
+    cursor = conn.cursor()
     reqdata = request.get_json()
     search_term = reqdata['search']
     print(search_term)
     return jsonify(status="ok",
-                   num_cancer_mutation_pmids=len(datasets.search_cancer_mutation(all_datasets, hr, search_term)),
-                   num_disease_mutation_pmids=len(datasets.search_disease_mutation(all_datasets, hr, search_term)),
-                   num_disease_regulator_pmids=len(datasets.search_disease_regulator(all_datasets, hr, search_term)),
-                   num_disease_regulon_pmids=len(datasets.search_disease_regulon(all_datasets, hr, search_term)),
-                   num_mutation_regulator_pmids=len(datasets.search_mutation_regulator(all_datasets, hr, search_term)),
-                   num_mutation_drug_pmids=len(datasets.search_mutation_drug(all_datasets, hr, search_term)))
+                   num_disease_mutation_pmids=len(datasets.search_disease_mutation(cursor, hr, search_term)),
+                   num_disease_regulator_pmids=len(datasets.search_disease_regulator(cursor, hr, search_term)),
+                   num_disease_regulon_pmids=len(datasets.search_disease_regulon(cursor, hr, search_term)),
+                   num_mutation_regulator_pmids=len(datasets.search_mutation_regulator(cursor, hr, search_term)),
+                   num_mutation_drug_pmids=len(datasets.search_mutation_drug(cursor, hr, search_term)))
 
 
 def fetch_articles(pmids):
@@ -817,7 +815,6 @@ def cancer_mutation_docs(hr, cancer, mutation):
     total = len(pmids)
     result = batch_results(request.get_json(), pmids)
     for entry in result:
-        #assocs = all_datasets[int(hr)]['pmid_mutation'][entry['pmid']]
         assocs = []
         if cancer != 'All':
             assocs.append(cancer)
@@ -839,13 +836,6 @@ def __make_search_results(pmids, search_term):
     return result, total
 
 
-@app.route('/cancer_mutation_search/<hr>/<search_term>', methods=['POST'])
-def cancer_mutation_search(hr, search_term):
-    pmids = datasets.search_cancer_mutation(all_datasets, hr, search_term)
-    result, total = __make_search_results(pmids, search_term)
-    return jsonify(status='ok', total=total, data=result)
-
-
 @app.route('/disease_mutation_docs/<hr>/<disease>/<mutation>', methods=['POST'])
 def disease_mutation_docs(hr, disease, mutation):
     conn = dbconn()
@@ -854,7 +844,6 @@ def disease_mutation_docs(hr, disease, mutation):
     total = len(pmids)
     result = batch_results(request.get_json(), pmids)
     for entry in result:
-        #assocs = all_datasets[int(hr)]['pmid_mutation'][entry['pmid']]
         assocs = []
         if disease != 'All':
             assocs.append(disease)
@@ -868,7 +857,9 @@ def disease_mutation_docs(hr, disease, mutation):
 
 @app.route('/disease_mutation_search/<hr>/<search_term>', methods=['POST'])
 def disease_mutation_search(hr, search_term):
-    pmids = datasets.search_disease_mutation(all_datasets, hr, search_term)
+    conn = dbconn()
+    cursor = conn.cursor()
+    pmids = datasets.search_disease_mutation(cursor, hr, search_term)
     result, total = __make_search_results(pmids, search_term)
     return jsonify(status='ok', total=total, data=result)
 
@@ -881,7 +872,6 @@ def disease_regulator_docs(hr, disease, regulator):
     total = len(pmids)
     result = batch_results(request.get_json(), pmids)
     for entry in result:
-        #assocs = all_datasets[int(hr)]['pmid_regulator'][entry['pmid']]
         assocs = []
         if disease != 'All':
             assocs.append(disease)
@@ -898,7 +888,9 @@ def disease_regulator_docs(hr, disease, regulator):
 
 @app.route('/disease_regulator_search/<hr>/<search_term>', methods=['POST'])
 def disease_regulator_search(hr, search_term):
-    pmids = datasets.search_disease_regulator(all_datasets, hr, search_term)
+    conn = dbconn()
+    cursor = conn.cursor()
+    pmids = datasets.search_disease_regulator(cursor, hr, search_term)
     result, total = __make_search_results(pmids, search_term)
     return jsonify(status='ok', total=total, data=result)
 
@@ -911,7 +903,6 @@ def disease_regulon_docs(hr, disease, regulon):
     total = len(pmids)
     result = batch_results(request.get_json(), pmids)
     for entry in result:
-        #assocs = all_datasets[int(hr)]['pmid_regulon'][entry['pmid']]
         assocs = []
         if disease != 'All':
             assocs.append(disease)
@@ -925,7 +916,9 @@ def disease_regulon_docs(hr, disease, regulon):
 
 @app.route('/disease_regulon_search/<hr>/<search_term>', methods=['POST'])
 def disease_regulon_search(hr, search_term):
-    pmids = datasets.search_disease_regulon(all_datasets, hr, search_term)
+    conn = dbconn()
+    cursor = conn.cursor()
+    pmids = datasets.search_disease_regulon(cursor, hr, search_term)
     result, total = __make_search_results(pmids, search_term)
     return jsonify(status='ok', total=total, data=result)
 
@@ -938,7 +931,6 @@ def mutation_regulator_docs(hr, mutation, regulator):
     total = len(pmids)
     result = batch_results(request.get_json(), pmids)
     for entry in result:
-        #assocs = all_datasets[int(hr)]['pmid_regulator'][entry['pmid']]
         assocs = []
         if mutation != 'All':
             assocs.append(mutation)
@@ -952,7 +944,9 @@ def mutation_regulator_docs(hr, mutation, regulator):
 
 @app.route('/mutation_regulator_search/<hr>/<search_term>', methods=['POST'])
 def mutation_regulator_search(hr, search_term):
-    pmids = datasets.search_mutation_regulator(all_datasets, hr, search_term)
+    conn = dbconn()
+    cursor = conn.cursor()
+    pmids = datasets.search_mutation_regulator(cursor, hr, search_term)
     result, total = __make_search_results(pmids, search_term)
     return jsonify(status='ok', total=total, data=result)
 
@@ -967,10 +961,8 @@ def mutation_drug_docs(hr, mutation, drug):
     for entry in result:
         assocs = []
         if mutation != 'All':
-            #mutation_assocs = all_datasets[int(hr)]['pmid_mutation'][entry['pmid']]
             assocs.append(mutation)
         if drug != 'All':
-            #drug_assocs = all_datasets[int(hr)]['pmid_drug'][entry['pmid']]
             assocs.append(drug)
 
         entry['assocs'] = '->'.join(list(assocs))
@@ -981,7 +973,9 @@ def mutation_drug_docs(hr, mutation, drug):
 
 @app.route('/mutation_drug_search/<hr>/<search_term>', methods=['POST'])
 def mutation_drug_search(hr, search_term):
-    pmids = datasets.search_mutation_drug(all_datasets, hr, search_term)
+    conn = dbconn()
+    cursor = conn.cursor()
+    pmids = datasets.search_mutation_drug(cursor, hr, search_term)
     result, total = __make_search_results(pmids, search_term)
     return jsonify(status='ok', total=total, data=result)
 

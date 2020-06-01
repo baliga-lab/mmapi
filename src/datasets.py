@@ -245,25 +245,6 @@ def read_all_datasets(datadir):
 Queries
 """
 
-def cancer_mutation(all_datasets, hr, cancer, mutation):
-    mm_mutation = all_datasets[int(hr)]['cancer_mutation']['mutation']
-    mm_cancer = all_datasets[int(hr)]['cancer_mutation']['cancer']
-    mutation_pmids = set()
-    cancer_pmids = set()
-    if mutation == 'All':
-        for tmp_pmids in mm_mutation.values():
-            mutation_pmids.update(tmp_pmids)
-    else:
-        mutation_pmids.update(mm_mutation[mutation])
-
-    if cancer == 'All Cancers':
-        for tmp_pmids in mm_cancer.values():
-            cancer_pmids.update(tmp_pmids)
-    else:
-        cancer_pmids.update(mm_cancer[cancer])
-    pmids = mutation_pmids.intersection(cancer_pmids)
-    return list(pmids)
-
 
 def disease_mutation(cur, hr, disease, mutation):
     # - join cancer and disease pmids
@@ -345,82 +326,32 @@ def mutation_drug(cur, hr, mutation, drug):
     return [row[0] for row in cur.fetchall()]
 
 
-def search_cancer_mutation(all_datasets, hr, search_term):
-    pmids = set()
-    mm_mutation = all_datasets[int(hr)]['cancer_mutation']['mutation']
-    mm_cancer = all_datasets[int(hr)]['cancer_mutation']['cancer']
+def search_disease_mutation(cur, hr, search_term):
+    dm_query = "select distinct pmid from exc_disease_mutation dm join exc_diseases d on dm.disease_id=d.id join exc_mutations m on dm.mutation_id=m.id where hr=%s and (d.name=%s or m.name=%s)"
+    cur.execute(dm_query, [hr, search_term, search_term])
+    dmres = [row[0] for row in cur.fetchall()]
 
-    for mutation in mm_mutation:
-        if mutation.find(search_term) >= 0:
-            pmids.update(mm_mutation[mutation])
-    for cancer in mm_cancer:
-        if cancer.find(search_term) >= 0:
-            pmids.update(mm_cancer[cancer])
-    return list(pmids)
+    cm_query = "select distinct pmid from exc_cancer_mutation cm join exc_cancers c on cm.cancer_id=c.id join exc_mutations m on cm.mutation_id=m.id where hr=%s and (c.name=%s or m.name=%s)"
+    cur.execute(cm_query, [hr, search_term, search_term])
+    cmres = [row[0] for row in cur.fetchall()]
+    return dmres + cmres
 
 
-def search_disease_mutation(all_datasets, hr, search_term):
-    pmids = set()
-    mm_mutation = all_datasets[int(hr)]['mm_mutation']['mutation']
-    mm_disease = all_datasets[int(hr)]['mm_mutation']['disease']
-
-    for mutation in mm_mutation:
-        if mutation.find(search_term) >= 0:
-            pmids.update(mm_mutation[mutation])
-    for disease in mm_disease:
-        if disease.find(search_term) >= 0:
-            pmids.update(mm_disease[disease])
-    return list(pmids)
+def search_disease_regulator(cur, hr, search_term):
+    cur.execute("select distinct pmid from exc_disease_regulator dr join exc_diseases d on dr.disease_id=d.id join exc_regulators r on dr.regulator_id=r.id where hr=%s and (d.name=%s or r.name=%s)", [hr, search_term, search_term])
+    return [row[0] for row in cur.fetchall()]
 
 
-def search_disease_regulator(all_datasets, hr, search_term):
-    pmids = set()
-    disease_regulator = all_datasets[int(hr)]['mm_regulator']['regulator']
-    mm_disease = all_datasets[int(hr)]['mm_regulator']['disease']
-
-    for regulator in disease_regulator:
-        if regulator.find(search_term) >= 0:
-            pmids.update(disease_regulator[regulator])
-    for disease in mm_disease:
-        if disease.find(search_term) >= 0:
-            pmids.update(mm_disease[disease])
-    return list(pmids)
+def search_disease_regulon(cur, hr, search_term):
+    cur.execute("select distinct pmid from exc_disease_regulon dr join exc_diseases d on dr.disease_id=d.id join exc_regulons r on dr.regulon_id=r.id where hr=%s and (d.name=%s and r.name=%s)", [hr, search_term, search_term])
+    return [row[0] for row in cur.fetchall()]
 
 
-def search_disease_regulon(all_datasets, hr, search_term):
-    pmids = set()
-    disease_regulon = all_datasets[int(hr)]['mm_regulon']['regulon']
-    mm_disease = all_datasets[int(hr)]['mm_regulon']['disease']
-    for regulon in disease_regulon:
-        if regulon.find(search_term) >= 0:
-            pmids.update(disease_regulon[regulon])
-    for disease in mm_disease:
-        if disease.find(search_term) >= 0:
-            pmids.update(mm_disease[disease])
-    return list(pmids)
+def search_mutation_regulator(cur, hr, search_term):
+    cur.execute("select distinct pmid from exc_mutation_regulator mr join exc_mutations m on mr.mutation_id=m.id join exc_regulators r on mr.regulator_id=r.id where hr=%s and (m.name=%s or r.name=%s)", [hr, search_term, search_term])
+    return [row[0] for row in cur.fetchall()]
 
 
-def search_mutation_regulator(all_datasets, hr, search_term):
-    pmids = set()
-    mutation_regulator_m = all_datasets[int(hr)]['mutation_regulator']['mutation']
-    mutation_regulator_r = all_datasets[int(hr)]['mutation_regulator']['regulator']
-    for mutation in mutation_regulator_m:
-        if mutation.find(search_term) >= 0:
-            pmids.update(mutation_regulator_m[mutation])
-    for regulator in mutation_regulator_r:
-        if regulator.find(search_term) >= 0:
-            pmids.update(mutation_regulator_r[regulator])
-    return list(pmids)
-
-
-def search_mutation_drug(all_datasets, hr, search_term):
-    pmids = set()
-    mutation_drug_m = all_datasets[int(hr)]['mutation_drugs']['mutation']
-    mutation_drug_d = all_datasets[int(hr)]['mutation_drugs']['drug']
-    for mutation, elems in mutation_drug_m.items():
-        if mutation.find(search_term) >= 0:
-            pmids.update(elems)
-    for drug, elems in mutation_drug_d.items():
-        if drug.find(search_term) >= 0:
-            pmids.update(elems)
-    return list(pmids)
+def search_mutation_drug(cur, hr, search_term):
+    cur.execute("select distinct pmid from exc_mutation_drug md join exc_mutations m on md.mutation_id=m.id join exc_drugs d on md.drug_id=d.id where hr=%s and (m.name=%s or d.name=%s)", [hr, search_term, search_term])
+    return [row[0] for row in cur.fetchall()]
