@@ -265,114 +265,84 @@ def cancer_mutation(all_datasets, hr, cancer, mutation):
     return list(pmids)
 
 
-def disease_mutation(all_datasets, hr, disease, mutation):
-    cancer_pmids = cancer_mutation(all_datasets, hr, disease, mutation)
+def disease_mutation(cur, hr, disease, mutation):
+    # - join cancer and disease pmids
+    dm_query = "select distinct pmid from exc_disease_mutation dm join exc_diseases d on dm.disease_id=d.id join exc_mutations m on dm.mutation_id=m.id where hr=%s"
+    dm_params = [hr]
+    if disease != 'All myelomas':
+        dm_query += ' and d.name=%s'
+        dm_params.append(disease)
+    if mutation != 'All':
+        dm_query += ' and m.name=%s'
+        dm_params.append(mutation)
+    cur.execute(dm_query, dm_params)
+    dm_result = [row[0] for row in cur.fetchall()]
 
-    mm_mutation = all_datasets[int(hr)]['mm_mutation']['mutation']
-    mm_disease = all_datasets[int(hr)]['mm_mutation']['disease']
-    disease_pmids = set()
-    mutation_pmids = set()
-    if mutation == 'All':
-        for tmp_pmids in mm_mutation.values():
-            mutation_pmids.update(tmp_pmids)
-    else:
-        mutation_pmids.update(mm_mutation[mutation])
+    cm_query = "select distinct pmid from exc_cancer_mutation cm join exc_cancers c on cm.cancer_id=c.id join exc_mutations m on cm.mutation_id=m.id where hr=%s"
+    cm_params = [hr]
 
-    if disease == 'All myelomas':
-        for tmp_pmids in mm_disease.values():
-            disease_pmids.update(tmp_pmids)
-    else:
-        disease_pmids.update(mm_disease[disease])
+    if disease != 'All Cancers':
+        cm_query += ' and c.name=%s'
+        cm_params.append(disease)
+    if mutation != 'All':
+        cm_query += ' and m.name=%s'
+        cm_params.append(mutation)
 
-    pmids = mutation_pmids.intersection(disease_pmids)
-    return list(pmids) + cancer_pmids
-
-
-def disease_regulator(all_datasets, hr, disease, regulator):
-    disease_regulator = all_datasets[int(hr)]['mm_regulator']['regulator']
-    mm_disease = all_datasets[int(hr)]['mm_regulator']['disease']
-    disease_pmids = set()
-    regulator_pmids = set()
-
-    if regulator == 'All':
-        for tmp_pmids in disease_regulator.values():
-            regulator_pmids.update(tmp_pmids)
-    else:
-        regulator_pmids.update(disease_regulator[regulator])
-
-    if disease == 'All':
-        for tmp_pmids in mm_disease.values():
-            disease_pmids.update(tmp_pmids)
-    else:
-        disease_pmids.update(mm_disease[disease])
-
-    pmids = regulator_pmids.intersection(disease_pmids)
-    return list(pmids)
+    cur.execute(cm_query, cm_params)
+    cm_result = [row[0] for row in cur.fetchall()]
+    return dm_result + cm_result
 
 
-def disease_regulon(all_datasets, hr, disease, regulon):
-    disease_regulon = all_datasets[int(hr)]['mm_regulon']['regulon']
-    mm_disease = all_datasets[int(hr)]['mm_regulon']['disease']
-    disease_pmids = set()
-    regulon_pmids = set()
-
-    if regulon == 'All':
-        for tmp_pmids in disease_regulon.values():
-            regulon_pmids.update(tmp_pmids)
-    else:
-        regulon_pmids.update(disease_regulon[regulon])
-
-    if disease == 'All':
-        for tmp_pmids in mm_disease.values():
-            disease_pmids.update(tmp_pmids)
-    else:
-        disease_pmids.update(mm_disease[disease])
-
-    pmids = regulon_pmids.intersection(disease_pmids)
-    return list(pmids)
+def disease_regulator(cur, hr, disease, regulator):
+    query = "select distinct pmid from exc_disease_regulator dr join exc_diseases d on dr.disease_id=d.id join exc_regulators r on dr.regulator_id=r.id where hr=%s"
+    params = [hr]
+    if disease != 'All myelomas':
+        query += ' and d.name=%s'
+        params.append(disease)
+    if regulator != 'All':
+        query += ' and r.name=%s'
+        params.append(regulator)
+    cur.execute(query, params)
+    return [row[0] for row in cur.fetchall()]
 
 
-def mutation_regulator(all_datasets, hr, mutation, regulator):
-    mutation_regulator_m = all_datasets[int(hr)]['mutation_regulator']['mutation']
-    mutation_regulator_r = all_datasets[int(hr)]['mutation_regulator']['regulator']
-    mutation_pmids = set()
-    regulator_pmids = set()
-    if mutation == 'All':
-        for tmp_pmids in mutation_regulator_m.values():
-            mutation_pmids.update(tmp_pmids)
-    else:
-        mutation_pmids.update(mutation_regulator_m[mutation])
-
-    if regulator == 'All':
-        for tmp_pmids in mutation_regulator_r.values():
-            regulator_pmids.update(tmp_pmids)
-    else:
-        regulator_pmids.update(mutation_regulator_r[regulator])
-
-    pmids = mutation_pmids.intersection(regulator_pmids)
-    return list(pmids)
+def disease_regulon(cur, hr, disease, regulon):
+    query = "select distinct pmid from exc_disease_regulon dr join exc_diseases d on dr.disease_id=d.id join exc_regulons r on dr.regulon_id=r.id where hr=%s"
+    params = [hr]
+    if disease != 'All myelomas':
+        query += ' and d.name=%s'
+        params.append(disease)
+    if regulon != 'All':
+        query += ' and r.name=%s'
+        params.append(regulon)
+    cur.execute(query, params)
+    return [row[0] for row in cur.fetchall()]
 
 
-def mutation_drug(all_datasets, hr, mutation, drug):
-    mutation_drug_m = all_datasets[int(hr)]['mutation_drugs']['mutation']
-    mutation_drug_d = all_datasets[int(hr)]['mutation_drugs']['drug']
-    mutation_pmids = set()
-    drug_pmids = set()
+def mutation_regulator(cur, hr, mutation, regulator):
+    query = "select distinct pmid from exc_mutation_regulator mr join exc_mutations m on mr.mutation_id=m.id join exc_regulators r on mr.regulator_id=r.id where hr=%s"
+    params = [hr]
+    if mutation != 'All':
+        query += ' and m.name=%s'
+        params.append(mutation)
+    if regulator != 'All':
+        query += ' and r.name=%s'
+        params.append(regulator)
+    cur.execute(query, params)
+    return [row[0] for row in cur.fetchall()]
 
-    if mutation == 'All':
-        for tmp_pmids in mutation_drug_m.values():
-            mutation_pmids.update(tmp_pmids)
-    else:
-        mutation_pmids.update(mutation_drug_m[mutation])
 
-    if drug == 'All':
-        for tmp_pmids in mutation_drug_d.values():
-            drug_pmids.update(tmp_pmids)
-    else:
-        drug_pmids.update(mutation_drug_d[drug])
-
-    pmids = mutation_pmids.intersection(drug_pmids)
-    return list(pmids)
+def mutation_drug(cur, hr, mutation, drug):
+    query = "select distinct pmid from exc_mutation_drug md join exc_mutations m on md.mutation_id=m.id join exc_drugs d on md.drug_id=d.id where hr=%s"
+    params = [hr]
+    if mutation != 'All':
+        query += ' and m.name=%s'
+        params.append(mutation)
+    if drug != 'All':
+        query += ' and d.name=%s'
+        params.append(drug)
+    cur.execute(query, params)
+    return [row[0] for row in cur.fetchall()]
 
 
 def search_cancer_mutation(all_datasets, hr, search_term):
