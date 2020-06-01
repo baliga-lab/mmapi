@@ -676,43 +676,72 @@ EXCELRA ACCESS FUNCTIONS
 @app.route('/diseases', methods=['POST'])
 def diseases():
     reqdata = request.get_json()
+    hr = reqdata['hr']
     conn = dbconn()
     cursor = conn.cursor()
-    cursor.execute('select name from exc_cancers')
+    canc_query = 'select distinct(c.name) from exc_cancer_mutation cm join exc_cancers c on cm.cancer_id=c.id where cm.hr=%s'
+    cursor.execute(canc_query, [hr])
     cancers = [row[0] for row in cursor.fetchall()]
-    cursor.execute('select name from exc_diseases')
-    diseases = [row[0] for row in cursor.fetchall()]
-    disease_cancers = set(cancers + diseases)
+
+    # diseases are used in exc_disease_mutation, exc_disease_regulator, exc_disease_regulon
+    dis_query1 = 'select distinct(d.name) from exc_disease_mutation dm join exc_diseases d on dm.disease_id=d.id where dm.hr=%s'
+    cursor.execute(dis_query1, [hr])
+    diseases1 = [row[0] for row in cursor.fetchall()]
+
+    dis_query2 = 'select distinct(d.name) from exc_disease_regulator dr join exc_diseases d on dr.disease_id=d.id where dr.hr=%s'
+    cursor.execute(dis_query2, [hr])
+    diseases2 = [row[0] for row in cursor.fetchall()]
+
+    dis_query3 = 'select distinct(d.name) from exc_disease_regulon dr join exc_diseases d on dr.disease_id=d.id where dr.hr=%s'
+    cursor.execute(dis_query3, [hr])
+    diseases3 = [row[0] for row in cursor.fetchall()]
+
+    disease_cancers = set(cancers + diseases1 + diseases2 + diseases3)
     return jsonify(status='ok', diseases=sorted(disease_cancers))
 
 
 @app.route('/mutations', methods=['POST'])
 def mutations():
     reqdata = request.get_json()
+    hr = reqdata['hr']
     conn = dbconn()
     cursor = conn.cursor()
-    cursor.execute('select name from exc_mutations order by name')
-    mutations = [row[0] for row in cursor.fetchall()]
-    return jsonify(status='ok', mutations=mutations)
+
+    cursor.execute('select m.name from exc_disease_mutation dm join exc_mutations m on dm.mutation_id=m.id where dm.hr=%s', [hr])
+    mutations1 = [row[0] for row in cursor.fetchall()]
+    cursor.execute('select m.name from exc_mutation_drug md join exc_mutations m on md.mutation_id=m.id where md.hr=%s', [hr])
+    mutations2 = [row[0] for row in cursor.fetchall()]
+    cursor.execute('select m.name from exc_mutation_regulator mr join exc_mutations m on mr.mutation_id=m.id where mr.hr=%s', [hr])
+    mutations3 = [row[0] for row in cursor.fetchall()]
+    return jsonify(status='ok', mutations=sorted(set(mutations1 + mutations2 + mutations3)))
 
 
 @app.route('/regulators', methods=['POST'])
 def regulators():
     reqdata = request.get_json()
+    hr = reqdata['hr']
+
     # filter by the other attributes, e.g. disease,
+    # in tables exc_disease_regulator, exc_mutation_regulator
     conn = dbconn()
     cursor = conn.cursor()
-    cursor.execute('select name from exc_regulators order by name')
-    regulators = [row[0] for row in cursor.fetchall()]
-    return jsonify(status='ok', regulators=regulators)
+    cursor.execute('select r.name from exc_disease_regulator dr join exc_regulators r on dr.regulator_id=r.id where dr.hr=%s', [hr])
+    regulators1 = [row[0] for row in cursor.fetchall()]
+    cursor.execute('select r.name from exc_mutation_regulator mr join exc_regulators r on mr.regulator_id=r.id where mr.hr=%s', [hr])
+    regulators2 = [row[0] for row in cursor.fetchall()]
+    return jsonify(status='ok', regulators=sorted(set(regulators1 + regulators2)))
 
 
 @app.route('/regulons', methods=['POST'])
 def regulons():
     reqdata = request.get_json()
+    hr = reqdata['hr']
+
+    # in tables exc_disease_regulon
     conn = dbconn()
     cursor = conn.cursor()
-    cursor.execute('select name from exc_regulons order by name')
+    cursor.execute('select r.name from exc_disease_regulon dr join exc_regulons r on dr.regulon_id=r.id where dr.hr=%s order by name',
+                   [hr])
     regulons = [row[0] for row in cursor.fetchall()]
     return jsonify(status='ok', regulons=regulons)
 
@@ -720,9 +749,13 @@ def regulons():
 @app.route('/drugs', methods=['POST'])
 def drugs():
     reqdata = request.get_json()
+    hr = reqdata['hr']
+
+    # in tables exc_mutation_drug
     conn = dbconn()
     cursor = conn.cursor()
-    cursor.execute('select name from exc_drugs order by name')
+    cursor.execute('select d.name from exc_mutation_drug md join exc_drugs d on md.drug_id=d.id where md.hr=%s order by name',
+                   [hr])
     drugs = [row[0] for row in cursor.fetchall()]
     return jsonify(status='ok', drugs=drugs)
 
