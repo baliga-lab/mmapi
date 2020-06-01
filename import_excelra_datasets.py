@@ -2,6 +2,7 @@
 import os, sys
 from collections import defaultdict
 import MySQLdb
+import traceback
 
 DBNAME = 'mm_api_v3'
 
@@ -85,22 +86,24 @@ def read_cancer_mutation(datadir, conn, hr):
                     cancers = [c for c in row[cancer_col].strip('"').split(' or ')
                                if len(c.strip()) > 0]
                     mutation = row[mutation_col].strip()
+                    cancer_pks = []
                     for cancer in cancers:
                         cancer_pk = add_or_get_cancer(cur, cancer)
+                        cancer_pks.append(cancer_pk)
 
                     if len(mutation) > 0:
                         mutation_pk = add_or_get_mutation(cur, mutation)
-                    """
-                    all_cancers.update(cancers)
-                    all_mutations.add(mutation)
+                    else:
+                        continue
+
                     pmids = [s.strip() for s in row[pmids_col].split('|') if len(s.strip()) > 0]
-                    for c in cancers:
-                        result['cancer'][c].update(pmids)
                     for pmid in pmids:
-                        hr_result['pmid_cancer'][pmid].update(cancers)
-                        hr_result['pmid_mutation'][pmid].add(mutation)
-                    result['mutation'][mutation].update(pmids)
-                    """
+                        for cancer_pk in cancer_pks:
+                            cur.execute('select count(*) from exc_cancer_mutation where hr=%s and cancer_id=%s and mutation_id=%s and pmid=%s',
+                                        [hr, cancer_pk, mutation_pk, pmid])
+                            if cur.fetchone()[0] == 0:
+                                cur.execute('insert into exc_cancer_mutation (hr,cancer_id,mutation_id,pmid) values (%s,%s,%s,%s)',
+                                            [hr, cancer_pk, mutation_pk, pmid])
             conn.commit()
 
 def read_mm_mutation(datadir, conn, hr):
@@ -119,24 +122,27 @@ def read_mm_mutation(datadir, conn, hr):
             for line in infile:
                 row = line.split('\t')
                 diseases = [d for d in row[disease_col].strip('"').split(' or ') if len(d.strip()) > 0]
+                disease_pks = []
                 for disease in diseases:
                     disease_pk = add_or_get_disease(cur, disease)
+                    disease_pks.append(disease_pk)
 
                 mutations = [m.strip() for m in row[mutation_col].strip().split(' or ')
                              if len(m.strip()) > 0]
+                mutation_pks = []
                 for mutation in mutations:
                     mutation_pk = add_or_get_mutation(cur, mutation)
+                    mutation_pks.append(mutation_pk)
 
                 pmids = [s.strip() for s in row[pmids_col].split('|') if len(s.strip()) > 0]
-                """
-                for d in diseases:
-                    result['disease'][d].update(pmids)
-                for mutation in mutations:
-                    result['mutation'][mutation].update(pmids)
-
                 for pmid in pmids:
-                    hr_result['pmid_disease'][pmid].update(diseases)
-                    hr_result['pmid_mutation'][pmid].update(mutations)"""
+                    for disease_pk in disease_pks:
+                        for mutation_pk in mutation_pks:
+                            cur.execute('select count(*) from exc_disease_mutation where hr=%s and disease_id=%s and mutation_id=%s and pmid=%s',
+                                        [hr, disease_pk, mutation_pk, pmid])
+                            if cur.fetchone()[0] == 0:
+                                cur.execute('insert into exc_disease_mutation (hr,disease_id,mutation_id,pmid) values (%s,%s,%s,%s)',
+                                            [hr, disease_pk, mutation_pk, pmid])
             conn.commit()
 
 
@@ -154,25 +160,23 @@ def read_mm_regulator(datadir, conn, hr):
                 if len(row) > 1:
                     diseases = [d for d in row[disease_col].strip('"').split(' or ')
                                 if len(d.strip()) > 0]
+                    disease_pks = []
                     for disease in diseases:
                         disease_pk = add_or_get_disease(cur, disease)
+                        disease_pks.append(disease_pk)
+
                     regulator = row[regulator_col].strip()
                     if len(regulator) > 0:
                         regulator_pk = add_or_get_regulator(cur, regulator)
-                    """
-                    if len(regulator.strip()) > 0:
-                        all_regulators.add(regulator)"""
 
-                    regulator_ensg = row[2].strip()
                     pmids = [s.strip() for s in row[pmids_col].split('|') if len(s.strip()) > 0]
-                    """
-                    for d in diseases:
-                        result['disease'][d].update(pmids)
-                    result['regulator'][regulator].update(pmids)
-
                     for pmid in pmids:
-                        hr_result['pmid_disease'][pmid].update(diseases)
-                        hr_result['pmid_regulator'][pmid].add(regulator)"""
+                        for disease_pk in disease_pks:
+                            cur.execute('select count(*) from exc_disease_regulator where hr=%s and disease_id=%s and regulator_id=%s and pmid=%s',
+                                        [hr, disease_pk, regulator_pk, pmid])
+                            if cur.fetchone()[0] == 0:
+                                cur.execute('insert into exc_disease_regulator (hr,disease_id,regulator_id,pmid) values (%s,%s,%s,%s)',
+                                            [hr, disease_pk, regulator_pk, pmid])
             conn.commit()
 
 
@@ -190,22 +194,25 @@ def read_mm_regulon(datadir, conn, hr):
                 if len(row) > 1:
                     diseases = [d for d in row[disease_col].strip('"').split(' or ')
                                 if len(d.strip()) > 0]
+                    disease_pks = []
                     for disease in diseases:
                         disease_pk = add_or_get_disease(cur, disease)
+                        disease_pks.append(disease_pk)
+
                     regulon = row[regulon_col].strip()
                     if len(regulon) > 0:
                         regulon_pk = add_or_get_regulon(cur, regulon)
+                    else:
+                        continue
 
-                    regulon_ensg = row[2]
                     pmids = [s.strip() for s in row[pmids_col].split('|') if len(s.strip()) > 0]
-                    """
-                    for d in diseases:
-                        result['disease'][d].update(pmids)
-                    result['regulon'][regulon].update(pmids)
-
                     for pmid in pmids:
-                        hr_result['pmid_disease'][pmid].update(diseases)
-                        hr_result['pmid_regulon'][pmid].add(regulon)"""
+                        for disease_pk in disease_pks:
+                            cur.execute('select count(*) from exc_disease_regulon where hr=%s and disease_id=%s and regulon_id=%s and pmid=%s',
+                                        [hr, disease_pk, regulon_pk, pmid])
+                            if cur.fetchone()[0] == 0:
+                                cur.execute('insert into exc_disease_regulon (hr,disease_id,regulon_id,pmid) values (%s,%s,%s,%s)',
+                                            [hr, disease_pk, regulon_pk, pmid])
             conn.commit()
 
 
@@ -236,22 +243,22 @@ def read_mutation_regulator(datadir, conn, hr):
                     regulators = [r.strip() for r in row[regulator_col].strip().split(' or ')
                                   if len(r.strip()) > 0]
 
+                    regulator_pks = []
                     if len(regulators) > 0:
                         for regulator in regulators:
                             regulator_pk = add_or_get_regulator(cur, regulator)
+                            regulator_pks.append(regulator_pk)
                     else:
                         continue
 
                     pmids = [s.strip() for s in row[pmids_col].split('|') if len(s.strip()) > 0]
-
-                    """
-                    result['mutation'][mutation].update(pmids)
-                    for regulator in regulators:
-                        result['regulator'][regulator].update(pmids)
-
                     for pmid in pmids:
-                        hr_result['pmid_regulator'][pmid].update(regulators)
-                        hr_result['pmid_mutation'][pmid].add(mutation)"""
+                        for regulator_pk in regulator_pks:
+                            cur.execute('select count(*) from exc_mutation_regulator where hr=%s and mutation_id=%s and regulator_id=%s and pmid=%s',
+                                        [hr, mutation_pk, regulator_pk, pmid])
+                            if cur.fetchone()[0] == 0:
+                                cur.execute('insert into exc_mutation_regulator (hr,mutation_id,regulator_id,pmid) values (%s,%s,%s,%s)',
+                                            [hr, mutation_pk, regulator_pk, pmid])
             conn.commit()
 
 
@@ -268,22 +275,30 @@ def read_mutation_drugs(datadir, conn, hr):
                     mutation = row[mutation_col].strip()
                     if len(mutation) > 0:
                         mutation_pk = add_or_get_mutation(cur, mutation)
+                    else:
+                        continue
 
+                    drug_pks = []
                     drugs = [d for d in row[drugs_col].strip('"').split(' or ') if len(d.strip()) > 0]
                     for drug in drugs:
                         drug_pk = add_or_get_drug(cur, drug)
+                        drug_pks.append(drug_pk)
 
                     pmids = [s.strip() for s in row[pmids_col].split('|') if len(s.strip()) > 0]
-                    """
-                    if len(mutation.strip()) > 0:
-                        all_mutations.add(mutation)
-                        result['mutation'][mutation].update(pmids)
-                    for drug in drugs:
-                        result['drug'][drug].update(pmids)
-
                     for pmid in pmids:
-                        hr_result['pmid_drug'][pmid].update(drugs)
-                        hr_result['pmid_mutation'][pmid].add(mutation)"""
+                        for drug_pk in drug_pks:
+                            cur.execute('select count(*) from exc_mutation_drug where hr=%s and mutation_id=%s and drug_id=%s and pmid=%s',
+                                        [hr, mutation_pk, drug_pk, pmid])
+                            if cur.fetchone()[0] == 0:
+                                try:
+                                    pmid = pmid.replace("']", "")  # hack
+                                    cur.execute('insert into exc_mutation_drug (hr,mutation_id,drug_id,pmid) values (%s,%s,%s,%s)',
+                                                [hr, mutation_pk, drug_pk, pmid])
+                                except Exception as e:
+                                    print('Exception in PMID: [%s]'% pmid)
+                                    traceback.print_exc()
+                                    raise
+
             conn.commit()
 
 
@@ -292,11 +307,12 @@ def read_all_datasets(datadir):
     conn = dbconn()
     for hr in range(2, 7):
         print('Hazard ratio %d...' % hr)
-        read_cancer_mutation(datadir, conn, hr)
-        read_mm_mutation(datadir, conn, hr)
-        read_mm_regulator(datadir, conn, hr)
-        read_mm_regulon(datadir, conn, hr)
-        read_mutation_regulator(datadir, conn, hr)
+        #read_cancer_mutation(datadir, conn, hr)
+        #read_mm_mutation(datadir, conn, hr)
+        #read_mm_regulator(datadir, conn, hr)
+        #read_mm_regulon(datadir, conn, hr)
+        #read_mutation_regulator(datadir, conn, hr)
+        ## TODO: Check why there are no entries !!!!
         read_mutation_drugs(datadir, conn, hr)
 
 if __name__ == '__main__':

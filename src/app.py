@@ -676,42 +676,63 @@ def bicluster_patient_status(cluster_id):
 EXCELRA ACCESS FUNCTIONS
 """
 
-"""
-@app.route('/cancers')
-def cancers():
-    return jsonify(status='ok', cancers=all_datasets['cancers'])
-"""
-
-@app.route('/diseases')
+@app.route('/diseases', methods=['POST'])
 def diseases():
-    cancers = all_datasets['cancers']
-    diseases = all_datasets['diseases']
+    reqdata = request.get_json()
+    conn = dbconn()
+    cursor = conn.cursor()
+    cursor.execute('select name from exc_cancers')
+    cancers = [row[0] for row in cursor.fetchall()]
+    cursor.execute('select name from exc_diseases')
+    diseases = [row[0] for row in cursor.fetchall()]
     disease_cancers = set(cancers + diseases)
     return jsonify(status='ok', diseases=sorted(disease_cancers))
 
 
-@app.route('/mutations')
+@app.route('/mutations', methods=['POST'])
 def mutations():
-    return jsonify(status='ok', mutations=all_datasets['mutations'])
+    reqdata = request.get_json()
+    conn = dbconn()
+    cursor = conn.cursor()
+    cursor.execute('select name from exc_mutations order by name')
+    mutations = [row[0] for row in cursor.fetchall()]
+    return jsonify(status='ok', mutations=mutations)
 
 
-@app.route('/regulators')
+@app.route('/regulators', methods=['POST'])
 def regulators():
-    return jsonify(status='ok', regulators=all_datasets['regulators'])
+    reqdata = request.get_json()
+    # filter by the other attributes, e.g. disease,
+    conn = dbconn()
+    cursor = conn.cursor()
+    cursor.execute('select name from exc_regulators order by name')
+    regulators = [row[0] for row in cursor.fetchall()]
+    return jsonify(status='ok', regulators=regulators)
 
 
-@app.route('/regulons')
+@app.route('/regulons', methods=['POST'])
 def regulons():
-    return jsonify(status='ok', regulons=all_datasets['regulons'])
+    reqdata = request.get_json()
+    conn = dbconn()
+    cursor = conn.cursor()
+    cursor.execute('select name from exc_regulons order by name')
+    regulons = [row[0] for row in cursor.fetchall()]
+    return jsonify(status='ok', regulons=regulons)
 
-@app.route('/drugs')
+
+@app.route('/drugs', methods=['POST'])
 def drugs():
-    return jsonify(status='ok', drugs=all_datasets['drugs'])
+    reqdata = request.get_json()
+    conn = dbconn()
+    cursor = conn.cursor()
+    cursor.execute('select name from exc_drugs order by name')
+    drugs = [row[0] for row in cursor.fetchall()]
+    return jsonify(status='ok', drugs=drugs)
+
 
 @app.route('/pmid_counts/<hr>/<disease>/<mutation>/<regulator>/<regulon>/<drug>')
 def pmid_counts(hr, disease, mutation, regulator, regulon, drug):
     return jsonify(status='ok',
-                   #num_cancer_mutation_pmids=len(datasets.cancer_mutation(all_datasets, hr, cancer, mutation)),
                    num_disease_mutation_pmids=len(datasets.disease_mutation(all_datasets, hr, disease, mutation)),
                    num_disease_regulator_pmids=len(datasets.disease_regulator(all_datasets, hr, disease, regulator)),
                    num_disease_regulon_pmids=len(datasets.disease_regulon(all_datasets, hr, disease, regulon)),
