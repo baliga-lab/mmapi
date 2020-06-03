@@ -677,23 +677,43 @@ EXCELRA ACCESS FUNCTIONS
 def diseases():
     reqdata = request.get_json()
     hr = reqdata['hr']
+    regulon = reqdata['regulon'] if 'regulon' in reqdata else None
+    mutation = reqdata['mutation'] if 'mutation' in reqdata else None
+    regulator = reqdata['regulator'] if 'regulator' in reqdata else None
+
     conn = dbconn()
     cursor = conn.cursor()
-    canc_query = 'select distinct(c.name) from exc_cancer_mutation cm join exc_cancers c on cm.cancer_id=c.id where cm.hr=%s'
-    cursor.execute(canc_query, [hr])
+    if mutation is None or mutation == 'All':
+        canc_query = 'select distinct(c.name) from exc_cancer_mutation cm join exc_cancers c on cm.cancer_id=c.id where cm.hr=%s'
+        cursor.execute(canc_query, [hr])
+    else:
+        canc_query = 'select distinct(c.name) from exc_cancer_mutation cm join exc_cancers c on cm.cancer_id=c.id join exc_mutations m on cm.mutation_id=m.id where cm.hr=%s and m.name=%s'
+        cursor.execute(canc_query, [hr, mutation])
     cancers = [row[0] for row in cursor.fetchall()]
 
     # diseases are used in exc_disease_mutation, exc_disease_regulator, exc_disease_regulon
-    dis_query1 = 'select distinct(d.name) from exc_disease_mutation dm join exc_diseases d on dm.disease_id=d.id where dm.hr=%s'
-    cursor.execute(dis_query1, [hr])
+    if mutation is None or mutation == 'All':
+        dis_query1 = 'select distinct(d.name) from exc_disease_mutation dm join exc_diseases d on dm.disease_id=d.id where dm.hr=%s'
+        cursor.execute(dis_query1, [hr])
+    else:
+        dis_query1 = 'select distinct(d.name) from exc_disease_mutation dm join exc_diseases d on dm.disease_id=d.id join exc_mutations m on dm.mutation_id=m.id where dm.hr=%s and m.name=%s'
+        cursor.execute(dis_query1, [hr, mutation])
     diseases1 = [row[0] for row in cursor.fetchall()]
 
-    dis_query2 = 'select distinct(d.name) from exc_disease_regulator dr join exc_diseases d on dr.disease_id=d.id where dr.hr=%s'
-    cursor.execute(dis_query2, [hr])
+    if regulator is None or regulator == 'All':
+        dis_query2 = 'select distinct(d.name) from exc_disease_regulator dr join exc_diseases d on dr.disease_id=d.id where dr.hr=%s'
+        cursor.execute(dis_query2, [hr])
+    else:
+        dis_query2 = 'select distinct(d.name) from exc_disease_regulator dr join exc_diseases d on dr.disease_id=d.id join exc_regulators r on dr.regulator_id=r.id where dr.hr=%s and r.name=%s'
+        cursor.execute(dis_query2, [hr, regulator])
     diseases2 = [row[0] for row in cursor.fetchall()]
 
-    dis_query3 = 'select distinct(d.name) from exc_disease_regulon dr join exc_diseases d on dr.disease_id=d.id where dr.hr=%s'
-    cursor.execute(dis_query3, [hr])
+    if regulon is None:
+        dis_query3 = 'select distinct(d.name) from exc_disease_regulon dr join exc_diseases d on dr.disease_id=d.id where dr.hr=%s'
+        cursor.execute(dis_query3, [hr])
+    else:
+        dis_query3 = 'select distinct(d.name) from exc_disease_regulon dr join exc_diseases d on dr.disease_id=d.id join exc_regulons r on dr.regulon_id=r.id where dr.hr=%s and r.name=%s'
+        cursor.execute(dis_query3, [hr, regulon])
     diseases3 = [row[0] for row in cursor.fetchall()]
 
     disease_cancers = set(cancers + diseases1 + diseases2 + diseases3)
@@ -704,14 +724,32 @@ def diseases():
 def mutations():
     reqdata = request.get_json()
     hr = reqdata['hr']
+    # mutations are dependent on drugs, diseases and regulators
+    drug = reqdata['drug'] if 'drug' in reqdata else None
+    disease = reqdata['disease'] if 'disease' in reqdata else None
+    regulator = reqdata['regulator'] if 'regulator' in reqdata else None
     conn = dbconn()
     cursor = conn.cursor()
 
-    cursor.execute('select m.name from exc_disease_mutation dm join exc_mutations m on dm.mutation_id=m.id where dm.hr=%s', [hr])
+    if disease is None or disease == 'All myelomas' or disease == 'All Cancers':
+        cursor.execute('select m.name from exc_disease_mutation dm join exc_mutations m on dm.mutation_id=m.id where dm.hr=%s', [hr])
+    else:
+        cursor.execute('select m.name from exc_disease_mutation dm join exc_mutations m on dm.mutation_id=m.id join exc_diseases d on dm.disease_id=d.id where dm.hr=%s and d.name=%s',
+                       [hr, disease])
+
     mutations1 = [row[0] for row in cursor.fetchall()]
-    cursor.execute('select m.name from exc_mutation_drug md join exc_mutations m on md.mutation_id=m.id where md.hr=%s', [hr])
+
+    if drug is not None:
+        cursor.execute('select m.name from exc_mutation_drug md join exc_mutations m on md.mutation_id=m.id join exc_drugs d on md.drug_id=d.id where md.hr=%s and d.name=%s', [hr, drug])
+    else:
+        cursor.execute('select m.name from exc_mutation_drug md join exc_mutations m on md.mutation_id=m.id where md.hr=%s', [hr])
     mutations2 = [row[0] for row in cursor.fetchall()]
-    cursor.execute('select m.name from exc_mutation_regulator mr join exc_mutations m on mr.mutation_id=m.id where mr.hr=%s', [hr])
+
+    if regulator is None or regulator == 'All':
+        cursor.execute('select m.name from exc_mutation_regulator mr join exc_mutations m on mr.mutation_id=m.id where mr.hr=%s', [hr])
+    else:
+        cursor.execute('select m.name from exc_mutation_regulator mr join exc_mutations m on mr.mutation_id=m.id join exc_regulators r on mr.regulator_id=r.id where mr.hr=%s and r.name=%s',
+                       [hr, regulator])
     mutations3 = [row[0] for row in cursor.fetchall()]
     return jsonify(status='ok', mutations=sorted(set(mutations1 + mutations2 + mutations3)))
 
@@ -720,14 +758,25 @@ def mutations():
 def regulators():
     reqdata = request.get_json()
     hr = reqdata['hr']
+    disease = reqdata['disease'] if 'disease' in reqdata else None
+    mutation = reqdata['mutation'] if 'mutation' in reqdata else None
 
     # filter by the other attributes, e.g. disease,
     # in tables exc_disease_regulator, exc_mutation_regulator
     conn = dbconn()
     cursor = conn.cursor()
-    cursor.execute('select r.name from exc_disease_regulator dr join exc_regulators r on dr.regulator_id=r.id where dr.hr=%s', [hr])
+    if disease is None or disease == 'All myelomas' or disease == 'All Cancers':
+        cursor.execute('select r.name from exc_disease_regulator dr join exc_regulators r on dr.regulator_id=r.id where dr.hr=%s', [hr])
+    else:
+        cursor.execute('select r.name from exc_disease_regulator dr join exc_regulators r on dr.regulator_id=r.id join exc_diseases d on dr.disease_id=d.id where dr.hr=%s and d.name=%s', [hr, disease])
+
     regulators1 = [row[0] for row in cursor.fetchall()]
-    cursor.execute('select r.name from exc_mutation_regulator mr join exc_regulators r on mr.regulator_id=r.id where mr.hr=%s', [hr])
+
+    if mutation is None or mutation == 'All':
+        cursor.execute('select r.name from exc_mutation_regulator mr join exc_regulators r on mr.regulator_id=r.id where mr.hr=%s', [hr])
+    else:
+        cursor.execute('select r.name from exc_mutation_regulator mr join exc_regulators r on mr.regulator_id=r.id join exc_mutations m on mr.mutation_id=m.id where mr.hr=%s and m.name=%s',
+                       [hr, mutation])
     regulators2 = [row[0] for row in cursor.fetchall()]
     return jsonify(status='ok', regulators=sorted(set(regulators1 + regulators2)))
 
@@ -736,12 +785,18 @@ def regulators():
 def regulons():
     reqdata = request.get_json()
     hr = reqdata['hr']
+    disease = reqdata['disease'] if 'disease' in reqdata else None
 
     # in tables exc_disease_regulon
     conn = dbconn()
     cursor = conn.cursor()
-    cursor.execute('select r.name from exc_disease_regulon dr join exc_regulons r on dr.regulon_id=r.id where dr.hr=%s order by name',
+    if disease is None or disease == 'All myelomas' or disease == 'All Cancers':
+        cursor.execute('select r.name from exc_disease_regulon dr join exc_regulons r on dr.regulon_id=r.id where dr.hr=%s order by name',
                    [hr])
+    else:
+        cursor.execute('select r.name from exc_disease_regulon dr join exc_regulons r on dr.regulon_id=r.id join exc_diseases d on dr.disease_id=d.id where dr.hr=%s and d.name=%s order by name',
+                   [hr, disease])
+
     regulons = [row[0] for row in cursor.fetchall()]
     return jsonify(status='ok', regulons=regulons)
 
@@ -750,12 +805,18 @@ def regulons():
 def drugs():
     reqdata = request.get_json()
     hr = reqdata['hr']
+    mutation = reqdata['mutation'] if 'mutation' in reqdata else None
 
     # in tables exc_mutation_drug
     conn = dbconn()
     cursor = conn.cursor()
-    cursor.execute('select d.name from exc_mutation_drug md join exc_drugs d on md.drug_id=d.id where md.hr=%s order by name',
-                   [hr])
+    if mutation is None or mutation == 'All':
+        cursor.execute('select d.name from exc_mutation_drug md join exc_drugs d on md.drug_id=d.id where md.hr=%s order by name',
+                       [hr])
+    else:
+        cursor.execute('select d.name from exc_mutation_drug md join exc_drugs d on md.drug_id=d.id join exc_mutations m on md.mutation_id=m.id where md.hr=%s and m.name=%s order by name',
+                       [hr, mutation])
+
     drugs = [row[0] for row in cursor.fetchall()]
     return jsonify(status='ok', drugs=drugs)
 
