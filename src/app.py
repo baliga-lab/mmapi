@@ -359,6 +359,29 @@ def regulator(tf_name):
         cursor.close()
         conn.close()
 
+
+@app.route('/api/v1.0.0/program/<prognum>')
+def program(prognum):
+    """information for the specified mutation"""
+    conn = dbconn()
+    cursor = conn.cursor()
+    try:
+        prognum = int(prognum)
+        cursor.execute('select distinct id, name from biclusters where trans_program=%s order by name', [prognum])
+        regulons = []
+        regulon_ids = []
+        genes = []
+        for regulon_id, name in cursor.fetchall():
+            regulons.append(name)
+            regulon_ids.append(regulon_id)
+        cursor.execute('select distinct ensembl_id,entrez_id,preferred from genes where id in (select id from biclusters where trans_program=%s)', [prognum])
+        for ensembl_id, entrez_id, preferred in cursor.fetchall():
+            genes.append({'ensmbl_id': ensembl_id, 'entrez_id': entrez_id, 'preferred': preferred})
+        return jsonify(regulons=regulons, genes=genes, num_genes=len(genes), num_regulons=len(regulons))
+    finally:
+        cursor.close()
+        conn.close()
+
 @app.route('/api/v1.0.0/summary')
 def summary():
     """model summary"""
