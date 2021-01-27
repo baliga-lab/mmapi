@@ -367,16 +367,20 @@ def program(prognum):
     cursor = conn.cursor()
     try:
         prognum = int(prognum)
-        cursor.execute('select distinct id, name from biclusters where trans_program=%s order by name', [prognum])
+        cursor.execute('select bc.id,name,bc.cox_hazard_ratio,num_genes,num_causal_flows from biclusters bc join (select bicluster_id, count(gene_id) as num_genes from bicluster_genes group by bicluster_id) as bcg on bc.id=bcg.bicluster_id join (select bicluster_id, count(*) as num_causal_flows from bc_mutation_tf group by bicluster_id) as bccf on bc.id=bccf.bicluster_id where bc.trans_program=%s', [prognum])
+
         regulons = []
-        regulon_ids = []
         genes = []
-        for regulon_id, name in cursor.fetchall():
-            regulons.append(name)
-            regulon_ids.append(regulon_id)
+        for regulon_id, name, cox_hazard_ratio, num_genes, num_causal_flows in cursor.fetchall():
+            regulons.append({
+                'regulon_id': regulon_id,
+                'name': name,
+                'cox_hazard_ratio': cox_hazard_ratio,
+                'num_genes': num_genes,
+                'num_causal_flows': num_causal_flows})
         cursor.execute('select distinct ensembl_id,entrez_id,preferred from genes where id in (select id from biclusters where trans_program=%s)', [prognum])
         for ensembl_id, entrez_id, preferred in cursor.fetchall():
-            genes.append({'ensmbl_id': ensembl_id, 'entrez_id': entrez_id, 'preferred': preferred})
+            genes.append({'ensembl_id': ensembl_id, 'entrez_id': entrez_id, 'preferred': preferred})
         return jsonify(regulons=regulons, genes=genes, num_genes=len(genes), num_regulons=len(regulons))
     finally:
         cursor.close()
