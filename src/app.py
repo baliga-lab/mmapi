@@ -289,23 +289,33 @@ def completions(term):
     conn = dbconn()
     cursor = conn.cursor()
     try:
-        cursor.execute('select name from tfs where name like %s', ["%s%%" % term])
-        terms = [{"id": row[0], "label": row[0], "value": row[0]}
-                 for row in cursor.fetchall()]
-        cursor.execute('select name from mutations where name like %s',
-                       ["%s%%" % term])
-        mutations = [{"id": row[0], "label": row[0], "value": row[0]}
+        if  term.startswith('Pr-'):
+            prefix = term.replace('Pr-', '')
+            if len(prefix) > 0:
+                cursor.execute('select distinct trans_program from biclusters where trans_program like \"' + prefix + '%\" order by trans_program')
+            else:
+                cursor.execute('select distinct trans_program from biclusters order by trans_program')
+            completions = [{'id': 'Pr-%s' % row[0],
+                            'label': 'Pr-%s' % row[0],
+                            'value': 'Pr-%s' % row[0]} for row in cursor.fetchall()]
+        else:
+            cursor.execute('select name from tfs where name like %s', ["%s%%" % term])
+            terms = [{"id": row[0], "label": row[0], "value": row[0]}
                      for row in cursor.fetchall()]
-        cursor.execute('select preferred from genes where preferred like %s',
-                       ["%s%%" % term])
-        gene_preferred = [{"id": row[0], "label": row[0], "value": row[0]}
-                          for row in cursor.fetchall()]
-        cursor.execute('select ensembl_id from genes where ensembl_id like %s',
-                       ["%s%%" % term])
-        gene_ensembl = [{"id": row[0], "label": row[0], "value": row[0]}
-                        for row in cursor.fetchall()]
+            cursor.execute('select name from mutations where name like %s',
+                           ["%s%%" % term])
+            mutations = [{"id": row[0], "label": row[0], "value": row[0]}
+                         for row in cursor.fetchall()]
+            cursor.execute('select preferred from genes where preferred like %s',
+                           ["%s%%" % term])
+            gene_preferred = [{"id": row[0], "label": row[0], "value": row[0]}
+                              for row in cursor.fetchall()]
+            cursor.execute('select ensembl_id from genes where ensembl_id like %s',
+                           ["%s%%" % term])
+            gene_ensembl = [{"id": row[0], "label": row[0], "value": row[0]}
+                            for row in cursor.fetchall()]
 
-        completions = terms + mutations + gene_preferred + gene_ensembl
+            completions = terms + mutations + gene_preferred + gene_ensembl
         return jsonify(completions=completions)
     finally:
         cursor.close()
