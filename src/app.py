@@ -16,7 +16,6 @@ from sqlalchemy import and_
 # because we have an API, we need to allow cross-origin here
 from flask_cors import CORS, cross_origin
 
-from werkzeug import secure_filename
 import requests
 import xml.etree.ElementTree as ET
 import re

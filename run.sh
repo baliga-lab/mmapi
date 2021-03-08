@@ -1,3 +1,3 @@
 #!/bin/bash
 
-APP_SETTINGS=settings.cfg python src/app.py
+APP_SETTINGS=settings.cfg python3 src/app.py
